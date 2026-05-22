@@ -7,6 +7,7 @@ export function MultiTabGuard() {
   useEffect(() => {
     const guard = createTabGuard();
     guard.onConflict(() => setConflict(true));
+    guard.onResolved(() => setConflict(false));
     return () => guard.release();
   }, []);
 

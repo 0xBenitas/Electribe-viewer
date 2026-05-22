@@ -165,9 +165,13 @@ export class MIDIClient {
   }
 
   send(bytes: number[] | Uint8Array): void {
-    this.pair?.output.send(
-      bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
-    );
+    try {
+      this.pair?.output.send(
+        bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
+      );
+    } catch {
+      // Output may be closing/disconnected (InvalidStateError); drop the message.
+    }
   }
 
   getIdentity(): DeviceIdentity | null {
