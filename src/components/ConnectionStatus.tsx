@@ -1,4 +1,5 @@
 import { useConnectionStore } from '../store/connection.ts';
+import { connectMidi, selectMidiPort } from '../midi/bridge.ts';
 import { formatFirmware } from '../midi/deviceInquiry.ts';
 
 const DOT: Record<string, string> = {
@@ -15,8 +16,8 @@ const DOT: Record<string, string> = {
 
 export function ConnectionStatus() {
   const state = useConnectionStore((s) => s.state);
-  const connect = useConnectionStore((s) => s.connect);
-  const selectPort = useConnectionStore((s) => s.selectPort);
+  const connect = connectMidi;
+  const selectPort = selectMidiPort;
 
   const dot = DOT[state.status] ?? 'bg-text-muted';
 

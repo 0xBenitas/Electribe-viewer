@@ -83,7 +83,7 @@ Avant toute action, lis `emx-pilot-spec-v0.3.md` en entier. C'est la source de v
 | 0 — MIDI Validation | Done | `docs/MIDI_FINDINGS.md` rempli |
 | 1 — Foundation | In Progress | Vite + setup + MIDIClient base |
 | 2 — Part Pilot read-only | In Progress | Grille 16 parts + metadata locale |
-| 3 — Param Mirror | Pending | CC bidirectionnel sur active part |
+| 3 — Param Mirror | In Progress | CC bidirectionnel sur active part |
 | 4 — SysEx Pattern Dump | Pending | Hydratation 16 parts au connect |
 | 5 — Preset Library | Pending | Save/recall avec CC + SysEx |
 | 6 — Pattern Catalog | Pending | 250 slots + metadata + switch |

@@ -37,8 +37,8 @@ export function PartDetail() {
       </label>
 
       <p className="text-xs text-text-muted">
-        Les paramètres temps réel (Cutoff, Reso, etc.) arriveront en Phase 3, et
-        l'hydratation depuis la machine en Phase 4.
+        L'hydratation des params depuis la machine (OSC, voice assign…) arrivera
+        en Phase 4.
       </p>
     </div>
   );
