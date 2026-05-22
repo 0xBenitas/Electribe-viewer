@@ -149,16 +149,20 @@ F0 7E 0g 06 02 42 23 01 00 00 vMaj vMin vRel 00 F7
 - Délai de réponse (ms) — utile pour calibrer le timeout (spec : 1 s, mais en pratique souvent < 50 ms)
 - `g` extrait → doit matcher le Global Channel réglé en §1.4
 
-**Findings** :
+**Findings (2026-05-22)** :
 
 ```
-[ ] Réponse reçue              : OUI / NON
-[ ] Hex brut                   : _________________________________________________
-[ ] Latence (ms)               : ____
-[ ] Global Channel décodé (g)  : ____
-[ ] Version (Maj.Min.Rel)      : ____.____.____
-[ ] Conforme spec              : ✅ / ⚠️ / ❌
-[ ] Notes                      :
+[x] Réponse reçue              : OUI
+[x] Hex brut                   : F0 7E 00 06 02 42 23 01 00 00 02 02 00 00 F7
+[x] Latence (ms)               : ~21 ms (envoi .169 → réponse .190)
+[x] Global Channel décodé (g)  : 0  (= MIDI channel 1)
+[x] Version (octets bruts)     : 02 02 00 00  → firmware machine connu = 2.02
+[x] Conforme spec              : ✅ (family 23 01, member 00 00 conformes §6.3)
+[x] Notes                      : réponse reçue 2× (les 2 ports d'entrée USB, cf. 99.2).
+                                  Device ID dans la réponse = 00 (la requête utilisait
+                                  7F = Any). Décodage version à revoir : la spec lit
+                                  data[10..12] = 02,02,00 → "2.2.0" mais le firmware
+                                  réel est "2.02". Voir anomalie 99.4.
 ```
 
 ### 2.2 Test — Identity Request « Channel-spécifique »
@@ -376,26 +380,35 @@ Pour chaque param testé :
 
 ### 4.1 Tableau de résultats
 
-| Knob / bouton | CC attendu | CC reçu | Plage observée | Résolution (≈ valeurs distinctes) | Conforme |
+**Findings (2026-05-22)** : test fait avec **Part 6 sélectionné** sur la machine.
+**TOUS les CC reçus sont arrivés sur le canal MIDI 6** (`B5 ...`) → confirme que
+les knobs émettent sur le canal du **part sélectionné** (Part 6 → ch6). Voir
+anomalie 99.1 (résolution). Tous les numéros de CC conformes à §6.4.
+
+| Knob / bouton | CC attendu | CC reçu | Canal | Plage observée | Conforme |
 |---|---|---|---|---|---|
-| Level | 7 | _à remplir_ | _à remplir_ | _à remplir_ | ⏳ |
-| Pan | 10 | | | | ⏳ |
-| Resonance | 71 | | | | ⏳ |
-| EG Decay/Release | 72 | | | | ⏳ |
-| EG Attack | 73 | | | | ⏳ |
-| Cutoff | 74 | | | | ⏳ |
-| OSC Pitch | 80 | | | | ⏳ |
-| Glide | 81 | | | | ⏳ |
-| OSC Edit | 82 | | | | ⏳ |
-| Filter EG Int | 83 | | | | ⏳ |
-| Mod Depth | 85 | | | | ⏳ |
-| Mod Speed | 86 | | | | ⏳ |
-| IFX Edit | 87 | | | | ⏳ |
-| Master FX X (touch) | 102 | | | | ⏳ |
-| Master FX Y (touch) | 103 | | | | ⏳ |
-| IFX On/Off button | 104 | | | | ⏳ |
-| MFX Send On/Off | 105 | | | | ⏳ |
-| MFX On/Off button | 106 | | | | ⏳ |
+| Level | 7 | **7** | ch6 | 100→89 (descendant) | ✅ |
+| Pan | 10 | **10** | ch6 | 125→121 (zone droite) | ✅ |
+| Resonance | 71 | **71** | ch6 | 10↔22 | ✅ |
+| EG Decay/Release | 72 | **72** | ch6 | 20↔32 | ✅ |
+| EG Attack | 73 | **73** | ch6 | 63↔76 | ✅ |
+| Cutoff | 74 | **74** | ch6 | 99↔126 | ✅ |
+| OSC Pitch | 80 | **80** | ch6 | 62↔63 (≈ centre 64, signed) | ✅ |
+| Glide | 81 | — | — | non testé | ⏳ |
+| OSC Edit | 82 | **82** | ch6 | 88↔101 | ✅ |
+| Filter EG Int | 83 | **83** | ch6 | 54↔64 (≈ centre 64, signed) | ✅ |
+| Mod Depth | 85 | **85** | ch6 | 107↔118 | ✅ |
+| Mod Speed | 86 | **86** | ch6 | 53↔56 | ✅ |
+| IFX Edit | 87 | **87** | ch6 | 15↔23 | ✅ |
+| Master FX X (touch) | 102 | — | — | non testé | ⏳ |
+| Master FX Y (touch) | 103 | — | — | non testé | ⏳ |
+| IFX On/Off button | 104 | — | — | non testé | ⏳ |
+| MFX Send On/Off | 105 | — | — | non testé | ⏳ |
+| MFX On/Off button | 106 | — | — | non testé | ⏳ |
+
+**Reste à tester en inbound** : Glide (81), Master FX X/Y (102/103, via le ruban
+tactile), et les 3 toggles (104/105/106, via les boutons). Plus : confirmer le
+mapping part→canal en sélectionnant d'autres parts (Part 1 → ch1 ? Part 16 → ch16 ?).
 
 ### 4.2 Test — débit max sur tournage rapide
 
@@ -651,6 +664,19 @@ Glitch ? Refus ?
 
 **But** : mesurer combien de temps / combien de mesures avant que le pattern
 change réellement après envoi de `Bank Select + Program Change`.
+
+> **Validation passive (2026-05-22)** : en changeant de pattern sur la machine,
+> celle-ci a **émis** la séquence sur le canal global (ch1) :
+> ```
+> B0 00 00   ; Bank Select MSB = 0
+> B0 20 01   ; Bank Select LSB = 1
+> C0 4C      ; Program Change = 76  → slot 127 + 76 = 203
+> ...
+> C0 4D      ; Program Change = 77  → slot 204
+> ```
+> ✅ Confirme le **format §6.6** pour les slots > 127 (bankLSB=1, pc = slot−127)
+> et que le switch pattern passe par le **canal global**, pas un canal de part.
+> Reste à mesurer la **latence** quand l'app **émet** ce switch (tests ci-dessous).
 
 ### 7.1 Test — Switch arrêté (machine en stop)
 
@@ -1058,6 +1084,20 @@ comportement des **CC** (knobs) n'a PAS encore été testé. Tout dépend de ça
 **Action proposée** : **NE PAS coder l'archi §1.1 telle quelle.** Tester les 3
 points ci-dessus, puis réviser §1.1 avec Bastou. Candidat **ADR-001 : modèle
 d'adressage per-part (canal MIDI vs current-edit-part + SysEx)**.
+
+**MISE À JOUR (2026-05-22, capture knobs §4.1)** : confirmation partielle. Avec
+Part 6 sélectionné, **tous les CC des knobs sont émis sur le canal 6**. Donc :
+- ✅ Point 2 (CC suit le canal du part) : **confirmé en RÉCEPTION**.
+- ✅ Mapping part N → canal N : fortement étayé (notes ch2/3/10/11 + CC ch6).
+- ⏳ Point 3 (ENVOYER un CC sur le canal d'un part le pilote-t-il, même non
+  sélectionné ?) : **reste à confirmer en ÉMISSION**. C'est le dernier test
+  manquant pour valider l'archi multi-part temps réel. À faire en ajoutant un
+  bouton d'envoi CC au probe, ou tôt en Phase 1/3.
+
+→ Hypothèse d'archi forte : **on peut mirror et piloter les 16 parts en temps
+réel via leurs canaux MIDI respectifs** (pour les params CC-mappés). Le SysEx
+Pattern Write ne reste nécessaire que pour les params **SysEx-only** (OSC type,
+voice assign, filter type, etc.). À acter en ADR-001 une fois l'émission confirmée.
 
 ### 99.2 Chaque message MIDI apparaît en double dans le log
 
