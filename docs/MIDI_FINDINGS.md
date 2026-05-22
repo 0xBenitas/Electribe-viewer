@@ -767,6 +767,12 @@ la dernière banque, ou y a-t-il un fallback ?
 **But** : déterminer le débit CC max que l'EMX2 peut absorber sans perte ni lag,
 pour calibrer le throttle outbound (spec §6.11).
 
+> **Statut (2026-05-22)** : test hands-on **non concluant** (difficile à juger à
+> l'œil/oreille avec l'outil jetable). **Non bloquant.** Conformément à la spec
+> §6.11, calibration empirique reportée en Phase 1/3 : on instrumentera l'app
+> (compteur d'envois, mesure de lag) pour mesurer précisément. Défaut de départ
+> retenu : **flush 20 ms = 50 Hz**, à ajuster ensuite.
+
 ### 8.1 Test — Burst à 50 Hz sur Cutoff (CC 74)
 
 **Procédure** :
