@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EMX.PILOT — MIDI Probe</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 20px;
+    background: #0a0a0b; color: #e8e6e3;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 15px; line-height: 1.5;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; color: #4dabf7; }
+  h2 { font-size: 15px; margin: 22px 0 8px; color: #ff6b35; text-transform: uppercase; letter-spacing: .05em; }
+  .sub { color: #8a8a90; margin: 0 0 16px; }
+  .card { background: #131316; border: 1px solid #2a2a2f; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
+  button {
+    background: #1c1c20; color: #e8e6e3; border: 1px solid #3a3a42;
+    border-radius: 6px; padding: 9px 16px; font-size: 14px; cursor: pointer; margin: 4px 6px 4px 0;
+  }
+  button:hover { background: #2a2a2f; border-color: #4dabf7; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+  .ok { background: #14361f; color: #51cf66; }
+  .bad { background: #3a1414; color: #ff5252; }
+  .wait { background: #3a3414; color: #fcc419; }
+  #ports { font-family: "Consolas", monospace; font-size: 13px; white-space: pre-wrap; color: #74c0fc; }
+  #log {
+    font-family: "Consolas", monospace; font-size: 13px;
+    background: #0a0a0b; border: 1px solid #2a2a2f; border-radius: 6px;
+    padding: 12px; height: 360px; overflow-y: auto; white-space: pre-wrap;
+  }
+  .log-in  { color: #51cf66; }
+  .log-out { color: #ff8c4a; }
+  .log-sys { color: #b197fc; }
+  .log-info{ color: #8a8a90; }
+  .big { font-size: 16px; font-weight: 600; }
+  code { background: #1c1c20; padding: 1px 6px; border-radius: 4px; color: #74c0fc; }
+</style>
+</head>
+<body>
+  <h1>EMX.PILOT — MIDI Probe</h1>
+  <p class="sub">Outil de validation Phase 0. Branche l'Electribe 2, clique les boutons dans l'ordre, copie le log à la fin.</p>
+
+  <div class="card">
+    <h2 style="margin-top:0">1. Permission &amp; ports</h2>
+    <span id="status" class="pill wait">en attente…</span>
+    <button id="btn-init">Demander l'accès MIDI</button>
+    <div id="ports" style="margin-top:10px">(clique le bouton ci-dessus)</div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">2. Device Inquiry (handshake)</h2>
+    <p class="sub" style="margin:0 0 10px">Envoie <code>F0 7E 7F 06 01 F7</code> et attend l'Identity Reply de l'Electribe.</p>
+    <button id="btn-inquiry" disabled>Envoyer Device Inquiry</button>
+    <div id="identity" class="big" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">3. CC entrant (knobs physiques)</h2>
+    <p class="sub" style="margin:0">Sur la machine : sélectionne Part 1, puis tourne les knobs Cutoff / Level / Reso. Les CC s'affichent en vert dans le log ci-dessous.</p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Log MIDI</h2>
+    <button id="btn-clear">Vider le log</button>
+    <button id="btn-copy">Copier tout le log</button>
+    <div id="log"></div>
+  </div>
+
+<script>
+"use strict";
+
+// CC map (spec emx-pilot-spec-v0.3.md §6.4) — pour afficher des noms lisibles
+const CC_NAMES = {
+  7:"Level", 10:"Pan", 71:"Reso", 72:"EG Decay", 73:"EG Attack", 74:"Cutoff",
+  80:"OSC Pitch", 81:"Glide", 82:"OSC Edit", 83:"Filter EG Int", 85:"Mod Depth",
+  86:"Mod Speed", 87:"IFX Edit", 102:"MFX X", 103:"MFX Y",
+  104:"IFX On/Off", 105:"MFX Send", 106:"MFX On/Off"
+};
+
+let access = null;
+let output = null; // port de sortie sélectionné
+
+const $ = (id) => document.getElementById(id);
+const hex = (n) => n.toString(16).toUpperCase().padStart(2, "0");
+const hexArr = (arr) => Array.from(arr).map(hex).join(" ");
+
+function log(cls, msg) {
+  const t = new Date();
+  const ts = `${String(t.getMinutes()).padStart(2,"0")}:${String(t.getSeconds()).padStart(2,"0")}.${String(t.getMilliseconds()).padStart(3,"0")}`;
+  const div = document.createElement("div");
+  div.className = cls;
+  div.textContent = `[${ts}] ${msg}`;
+  $("log").appendChild(div);
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+function setStatus(cls, text) {
+  const el = $("status");
+  el.className = "pill " + cls;
+  el.textContent = text;
+}
+
+async function init() {
+  if (!navigator.requestMIDIAccess) {
+    setStatus("bad", "Web MIDI non supporté");
+    log("log-info", "ERREUR: ce navigateur ne supporte pas Web MIDI. Utilise Chrome / Edge.");
+    return;
+  }
+  try {
+    access = await navigator.requestMIDIAccess({ sysex: true });
+    setStatus("ok", "accès accordé");
+    log("log-info", "Accès MIDI accordé (sysex: true).");
+    listPorts();
+    access.onstatechange = (e) => {
+      log("log-info", `statechange: ${e.port.type} "${e.port.name}" → ${e.port.state}`);
+      listPorts();
+    };
+    $("btn-inquiry").disabled = false;
+  } catch (err) {
+    setStatus("bad", "refusé / erreur");
+    log("log-info", "ERREUR accès MIDI: " + err);
+  }
+}
+
+function listPorts() {
+  let txt = "";
+  let firstOut = null;
+  txt += "INPUTS:\n";
+  for (const input of access.inputs.values()) {
+    txt += `  • name="${input.name}"  manufacturer="${input.manufacturer || "?"}"  id=${input.id}\n`;
+    input.onmidimessage = onMidi;
+  }
+  txt += "OUTPUTS:\n";
+  for (const out of access.outputs.values()) {
+    txt += `  • name="${out.name}"  manufacturer="${out.manufacturer || "?"}"  id=${out.id}\n`;
+    if (!firstOut) firstOut = out;
+    if (/electribe/i.test(out.name)) output = out;
+  }
+  if (!output) output = firstOut; // fallback : premier port dispo
+  if (output) txt += `\n→ port de sortie utilisé: "${output.name}"\n`;
+  $("ports").textContent = txt || "(aucun port détecté — l'Electribe est-elle branchée ?)";
+}
+
+function onMidi(e) {
+  const d = e.data;
+  // SysEx
+  if (d[0] === 0xF0) {
+    log("log-sys", "SysEx IN  : " + hexArr(d));
+    parseIdentity(d);
+    return;
+  }
+  const statusByte = d[0] & 0xF0;
+  const ch = d[0] & 0x0F;
+  if (statusByte === 0xB0) { // Control Change
+    const cc = d[1], val = d[2];
+    const name = CC_NAMES[cc] ? ` (${CC_NAMES[cc]})` : "";
+    log("log-in", `CC IN     : ch${ch+1}  CC ${cc}${name} = ${val}    [${hexArr(d)}]`);
+  } else if (statusByte === 0x90) {
+    log("log-in", `Note ON   : ch${ch+1}  note ${d[1]}  vel ${d[2]}    [${hexArr(d)}]`);
+  } else if (statusByte === 0x80) {
+    log("log-in", `Note OFF  : ch${ch+1}  note ${d[1]}    [${hexArr(d)}]`);
+  } else if (d[0] === 0xC0 || statusByte === 0xC0) {
+    log("log-in", `ProgChange: ch${ch+1}  pgm ${d[1]}    [${hexArr(d)}]`);
+  } else if (d[0] >= 0xF8) {
+    // clock / realtime — on ignore pour pas spammer
+  } else {
+    log("log-in", "IN        : " + hexArr(d));
+  }
+}
+
+function parseIdentity(d) {
+  // Attendu: F0 7E 0g 06 02 42 23 01 00 00 vMaj vMin vRel ?? F7
+  if (d.length >= 14 && d[1] === 0x7E && d[3] === 0x06 && d[4] === 0x02) {
+    const g = d[2] & 0x0F;
+    if (d[5] === 0x42 && d[6] === 0x23 && d[7] === 0x01) {
+      const msg = `✅ ELECTRIBE détectée — firmware ${d[10]}.${d[11]}.${d[12]}, Global Channel ${g+1} (g=${g})`;
+      $("identity").innerHTML = `<span class="pill ok">${msg}</span>`;
+      log("log-info", msg);
+    } else {
+      const msg = `⚠️ Identity Reply reçu mais PAS un Electribe (Korg=${d[5]===0x42}, family=${hex(d[6])} ${hex(d[7])})`;
+      $("identity").innerHTML = `<span class="pill bad">${msg}</span>`;
+      log("log-info", msg);
+    }
+  }
+}
+
+function sendInquiry() {
+  if (!output) { log("log-info", "Pas de port de sortie."); return; }
+  const msg = [0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7];
+  output.send(msg);
+  log("log-out", "SysEx OUT : " + hexArr(msg) + "   (Device Inquiry)");
+  $("identity").innerHTML = `<span class="pill wait">en attente de la réponse…</span>`;
+}
+
+$("btn-init").addEventListener("click", init);
+$("btn-inquiry").addEventListener("click", sendInquiry);
+$("btn-clear").addEventListener("click", () => { $("log").innerHTML = ""; });
+$("btn-copy").addEventListener("click", async () => {
+  const txt = Array.from($("log").children).map(c => c.textContent).join("\n");
+  try { await navigator.clipboard.writeText(txt); log("log-info", "Log copié dans le presse-papier."); }
+  catch { log("log-info", "Copie auto impossible — sélectionne le texte manuellement."); }
+});
+</script>
+</body>
+</html>
