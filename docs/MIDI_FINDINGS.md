@@ -457,18 +457,33 @@ la taille et la structure.
 - Header reçu : `F0 42 3g 00 01 23 40 ...` (`0x40` = `CURRENT_PATTERN_DUMP`)
 - Taille totale : **18 725 + 8 = 18 733 octets** (spec §6.7 : data raw 16 384 → 18 725 encoded MIDI ; + envelope 7 bytes header + 1 footer).
 
-**Findings** :
+**Findings (2026-05-22)** :
 
 ```
-[ ] Request envoyé hex            : F0 42 3_ 00 01 23 10 F7
-[ ] Premier byte reçu après (ms)  : ____
-[ ] F7 final reçu après (ms)      : ____  (= round-trip total)
-[ ] Taille du SysEx reçu (bytes)  : ____
-[ ] Header décodé (data[0..6])    : ____ ____ ____ ____ ____ ____ ____
-[ ] Function byte (data[6])       : ____  (attendu: 0x40)
-[ ] Conforme spec                 : ✅ / ⚠️ / ❌
-[ ] Notes                         :
+[x] Request envoyé hex            : F0 42 30 00 01 23 10 F7
+[x] F7 final reçu après (ms)      : 63.4 ms (round-trip total)
+[x] Taille du SysEx reçu (bytes)  : 18733  (= 7 header + 18725 payload + 1 F7) ✅
+[x] Header décodé (data[0..6])    : F0 42 30 00 01 23 40  (function 0x40 ✅)
+[x] Conforme spec                 : ✅
+[x] Notes                         : capture sauvée dans tests/fixtures/pattern-dump-init.bin
 ```
+
+**Validation structure (décodage hors-ligne du .bin, conversion 7→8 bit)** :
+
+```
+[x] Payload encodé                : 18725 octets
+[x] Décodé 7→8 bit                : 16384 octets exactement ✅ (valide conversion.ts)
+[x] Header @0                     : 50 54 53 54 = "PTST" ✅
+[x] Nom pattern (bytes 16..33)    : "Init Pattern" ✅
+[x] Tempo (bytes 34..35 LE)       : 1600 → 160.0 BPM (÷10) ✅
+[x] swing=0 length=3 beat=0 key=6 scale=2 chordSet=2 playLevel=0
+[x] Footer "PTED"                 : offset 15356 ✅ (après Part 16 @15103)
+[x] Part 1 @offset 2048           : 00 01 03 01 00 00 00 00 (premiers octets)
+```
+
+⚠️ Le décodage 7→8 bit, les offsets header/nom/tempo/footer et le bloc Part @2048
+**correspondent exactement** à la spec §6.7/§6.8. Le parser Phase 4 peut être
+écrit et testé directement contre cette fixture.
 
 ### 5.2 Test — Round-trip répété (jitter & stabilité)
 
