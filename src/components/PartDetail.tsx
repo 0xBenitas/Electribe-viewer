@@ -1,5 +1,8 @@
 import { usePartsStore } from '../store/parts.ts';
+import { useCurrentPatternStore } from '../store/currentPattern.ts';
 import { partColor } from '../lib/colors.ts';
+
+const VOICE_ASSIGN = ['Mono1', 'Mono2', 'Poly1', 'Poly2'];
 
 export function PartDetail() {
   const selectedPartId = usePartsStore((s) => s.selectedPartId);
@@ -7,6 +10,9 @@ export function PartDetail() {
     s.parts.find((p) => p.id === s.selectedPartId),
   );
   const setMetadata = usePartsStore((s) => s.setMetadata);
+  const parsed = useCurrentPatternStore(
+    (s) => s.pattern?.parts[selectedPartId - 1] ?? null,
+  );
 
   if (!part) return null;
   const color = part.customColor ?? partColor(part.id);
@@ -36,10 +42,28 @@ export function PartDetail() {
         />
       </label>
 
-      <p className="text-xs text-text-muted">
-        L'hydratation des params depuis la machine (OSC, voice assign…) arrivera
-        en Phase 4.
-      </p>
+      {parsed ? (
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+          <dt className="text-text-dim">OSC type</dt>
+          <dd className="text-right text-text">{parsed.oscType}</dd>
+          <dt className="text-text-dim">Voice</dt>
+          <dd className="text-right text-text">
+            {VOICE_ASSIGN[parsed.voiceAssign] ?? parsed.voiceAssign}
+          </dd>
+          <dt className="text-text-dim">Filter type</dt>
+          <dd className="text-right text-text">{parsed.filterType}</dd>
+          <dt className="text-text-dim">IFX type</dt>
+          <dd className="text-right text-text">{parsed.ifxType}</dd>
+          <dt className="text-text-dim">Last step</dt>
+          <dd className="text-right text-text">{parsed.lastStep}</dd>
+          <dt className="text-text-dim">Mute</dt>
+          <dd className="text-right text-text">{parsed.mute ? 'On' : 'Off'}</dd>
+        </dl>
+      ) : (
+        <p className="text-xs text-text-muted">
+          Connecte la machine pour hydrater les params depuis le pattern courant.
+        </p>
+      )}
     </div>
   );
 }

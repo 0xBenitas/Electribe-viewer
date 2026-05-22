@@ -11,11 +11,18 @@ import {
   decodeGlobalDump,
   parseGlobalDump,
 } from './sysex/globalDump.ts';
+import {
+  buildCurrentPatternDumpRequest,
+  decodeCurrentPatternDump,
+  parsePatternDump,
+} from './sysex/parser.ts';
+import { patternToParams } from './hydrate.ts';
 import type { ConnectionState } from './types.ts';
 import { useConnectionStore } from '../store/connection.ts';
 import { usePartsStore } from '../store/parts.ts';
 import { useParamsStore } from '../store/params.ts';
 import { useGlobalsStore } from '../store/globals.ts';
+import { useCurrentPatternStore } from '../store/currentPattern.ts';
 
 let client: MIDIClient | null = null;
 const throttler = new CCThrottler((msg) => client?.send(msg));
@@ -24,17 +31,28 @@ function onState(state: ConnectionState): void {
   useConnectionStore.setState({ state });
   if (state.status === 'connected') {
     throttler.start();
-    // Knob Mode awareness (spec §6.9): fetch globals once connected.
-    client?.send(buildGlobalDumpRequest(state.identity.globalChannel));
+    const gc = state.identity.globalChannel;
+    // Knob Mode awareness (spec §6.9) + hydrate the 16 parts (spec §1.2).
+    client?.send(buildGlobalDumpRequest(gc));
+    client?.send(buildCurrentPatternDumpRequest(gc));
   }
 }
 
 function onMessage({ channel, data }: MidiMessage): void {
   if (data[0] === 0xf0) {
-    if (getSysExFunction(data) === SYSEX_FN.GLOBAL_DUMP) {
+    const fn = getSysExFunction(data);
+    if (fn === SYSEX_FN.GLOBAL_DUMP) {
       try {
         const globals = parseGlobalDump(decodeGlobalDump(data));
         useGlobalsStore.getState().setKnobMode(globals.knobMode);
+      } catch {
+        // ignore malformed dumps
+      }
+    } else if (fn === SYSEX_FN.CURRENT_PATTERN_DUMP) {
+      try {
+        const pattern = parsePatternDump(decodeCurrentPatternDump(data));
+        useCurrentPatternStore.getState().setPattern(pattern);
+        useParamsStore.getState().hydrate(patternToParams(pattern));
       } catch {
         // ignore malformed dumps
       }

@@ -10,6 +10,8 @@ interface ParamsStore {
   setLocal: (partId: number, param: CCParam, value: number) => void;
   /** Reconcile from an incoming CC (knob turned on the machine). */
   applyIncoming: (partId: number, param: CCParam, value: number) => void;
+  /** Replace all part values from a parsed Pattern Dump (Phase 4). */
+  hydrate: (byPart: Record<number, ParamValues>) => void;
 }
 
 const writeValue = (
@@ -30,4 +32,5 @@ export const useParamsStore = create<ParamsStore>((set) => ({
     set((s) => writeValue(s, partId, param, value)),
   applyIncoming: (partId, param, value) =>
     set((s) => writeValue(s, partId, param, value)),
+  hydrate: (byPart) => set({ byPart }),
 }));

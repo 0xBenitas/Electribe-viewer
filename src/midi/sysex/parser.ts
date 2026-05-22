@@ -2,8 +2,14 @@
 // TABLE 1 + TABLE 6). Offsets are absolute in the 16384-byte decoded dump.
 
 import { decode7to8 } from './conversion.ts';
-import { getSysExFunction, SYSEX_END } from './envelope.ts';
+import { buildSysEx, getSysExFunction, SYSEX_END } from './envelope.ts';
 import { SYSEX_FN } from './functions.ts';
+
+export function buildCurrentPatternDumpRequest(
+  globalChannel: number,
+): Uint8Array {
+  return buildSysEx(globalChannel, SYSEX_FN.CURRENT_PATTERN_DUMP_REQUEST);
+}
 
 export const RAW_DUMP_SIZE = 16384;
 export const PART_COUNT = 16;
