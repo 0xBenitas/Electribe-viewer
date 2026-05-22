@@ -42,6 +42,18 @@ export const CC_MAP = {
 
 export type CCParam = keyof typeof CC_MAP;
 
+/**
+ * Pattern-level CCs (Master FX) are emitted by the machine on the global
+ * channel, not a part channel. They must NOT drive active-part detection nor be
+ * stored per-part (ADR-001 / Phase 0). MFX Send (105) and IFX On/Off (104) ARE
+ * per-part (TABLE 6 bytes 27/32).
+ */
+export const PATTERN_LEVEL_PARAMS: ReadonlySet<CCParam> = new Set<CCParam>([
+  'masterFxX',
+  'masterFxY',
+  'mfxOnOff',
+]);
+
 const BY_CC: ReadonlyMap<number, CCParam> = new Map(
   (Object.keys(CC_MAP) as CCParam[]).map((p) => [CC_MAP[p].cc, p]),
 );

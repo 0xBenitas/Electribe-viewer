@@ -11,12 +11,16 @@ const SLIDERS: CCParam[] = [
   'ampPan',
   'ifxEdit',
 ];
-const TOGGLES: CCParam[] = ['ifxOnOff', 'mfxSendOnOff', 'mfxOnOff'];
+// mfxOnOff / masterFxX/Y are pattern-level (not per-part) — handled elsewhere.
+const TOGGLES: CCParam[] = ['ifxOnOff', 'mfxSendOnOff'];
 
 export function ParamPanel() {
   const activePartId = usePartsStore((s) => s.activePartId);
   const selectedPartId = usePartsStore((s) => s.selectedPartId);
   const mirrorPartId = activePartId ?? selectedPartId;
+  // ADR-001: until a knob reveals the active part, sending CC would edit an
+  // unknown part on the machine. Disable editing (still show values).
+  const disabled = activePartId === null;
 
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-line bg-bg-2 p-4">
@@ -36,13 +40,23 @@ export function ParamPanel() {
 
       <div className="flex flex-col gap-3">
         {SLIDERS.map((p) => (
-          <ParamSlider key={p} param={p} partId={mirrorPartId} />
+          <ParamSlider
+            key={p}
+            param={p}
+            partId={mirrorPartId}
+            disabled={disabled}
+          />
         ))}
       </div>
 
       <div className="flex flex-wrap gap-2">
         {TOGGLES.map((p) => (
-          <ParamToggle key={p} param={p} partId={mirrorPartId} />
+          <ParamToggle
+            key={p}
+            param={p}
+            partId={mirrorPartId}
+            disabled={disabled}
+          />
         ))}
       </div>
     </div>

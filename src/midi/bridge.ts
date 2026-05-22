@@ -3,7 +3,14 @@
 
 import { MIDIClient, type MidiMessage } from './client.ts';
 import { CCThrottler } from './throttle.ts';
-import { CC_MAP, decodeCC, encodeCC, paramForCC, type CCParam } from './ccMap.ts';
+import {
+  CC_MAP,
+  PATTERN_LEVEL_PARAMS,
+  decodeCC,
+  encodeCC,
+  paramForCC,
+  type CCParam,
+} from './ccMap.ts';
 import { getSysExFunction } from './sysex/envelope.ts';
 import { SYSEX_FN } from './sysex/functions.ts';
 import {
@@ -35,6 +42,8 @@ function onState(state: ConnectionState): void {
     // Knob Mode awareness (spec §6.9) + hydrate the 16 parts (spec §1.2).
     client?.send(buildGlobalDumpRequest(gc));
     client?.send(buildCurrentPatternDumpRequest(gc));
+  } else {
+    throttler.reset();
   }
 }
 
@@ -63,7 +72,10 @@ function onMessage({ channel, data }: MidiMessage): void {
   if ((data[0]! & 0xf0) === 0xb0) {
     const param = paramForCC(data[1]!);
     if (!param) return; // ignore Bank Select / unmapped CC (Phase 0 finding)
-    // ADR-001: the channel of an incoming mapped CC is the active edit part.
+    // Pattern-level CCs come on the global channel: never treat them as a part
+    // signal (would corrupt active-part detection + per-part store).
+    if (PATTERN_LEVEL_PARAMS.has(param)) return;
+    // ADR-001: the channel of an incoming part-level CC is the active edit part.
     usePartsStore.getState().setActivePart(channel);
     useParamsStore
       .getState()

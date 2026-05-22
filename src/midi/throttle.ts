@@ -21,12 +21,22 @@ export class CCThrottler {
     this.interval = setInterval(() => this.flush(), this.flushMs);
   }
 
+  /** Stop the timer and flush whatever is queued (graceful shutdown). */
   stop(): void {
     if (this.interval !== null) {
       clearInterval(this.interval);
       this.interval = null;
     }
     this.flush();
+  }
+
+  /** Stop the timer and DISCARD the queue (used on disconnect). */
+  reset(): void {
+    if (this.interval !== null) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
+    this.queue.clear();
   }
 
   /** Channel is 0-based here (status byte low nibble). */
