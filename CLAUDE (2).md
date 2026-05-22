@@ -80,7 +80,7 @@ Avant toute action, lis `emx-pilot-spec-v0.3.md` en entier. C'est la source de v
 
 | Phase | Status | Output principal |
 |---|---|---|
-| 0 — MIDI Validation | Pending | `docs/MIDI_FINDINGS.md` rempli |
+| 0 — MIDI Validation | In Progress | `docs/MIDI_FINDINGS.md` rempli |
 | 1 — Foundation | Pending | Vite + setup + MIDIClient base |
 | 2 — Part Pilot read-only | Pending | Grille 16 parts + metadata locale |
 | 3 — Param Mirror | Pending | CC bidirectionnel sur active part |
