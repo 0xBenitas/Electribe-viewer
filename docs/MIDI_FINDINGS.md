@@ -88,10 +88,13 @@ mesurer les latences round-trip.
 |---|---|
 | Nom port IN (OS) | _à remplir_ |
 | Nom port OUT (OS) | _à remplir_ |
-| Nom port (Chrome `MIDIInput.name`) | _à remplir_ |
+| Nom port (Chrome `MIDIInput.name`) | **`electribe2`** (observé 2026-05-22) |
 | Nom port (Chrome `MIDIOutput.name`) | _à remplir_ |
 | `MIDIInput.manufacturer` | _à remplir_ |
 | `MIDIInput.id` (stable ?) | _à remplir_ |
+
+⚠️ Détection auto Phase 1 : matcher sur `/electribe/i` (le name observé est
+`electribe2`, sans espace).
 
 ### 1.4 Réglages machine recommandés avant tests
 
@@ -1010,7 +1013,67 @@ Débrancher / rebrancher pendant que l'app théorique est connectée.
 > Toutes les divergences entre ce qu'on observe et ce que la spec / la doc Korg
 > annoncent. Format : titre court, ce qui est attendu, ce qui se passe, impact.
 
-### 99.1 _(template)_
+### 99.1 Les parts transmettent les notes sur des canaux MIDI individuels (contredit §1.1)
+
+**Observation (2026-05-22, capture playback ~80 BPM, firmware à confirmer)** :
+pendant la lecture d'un pattern, l'EMX2 a émis des Note On/Off sur **plusieurs
+canaux MIDI distincts** — un par part :
+
+| Canal MIDI observé | Status hex | Part présumé |
+|---|---|---|
+| 2 | `91` / `81` | Part 2 |
+| 3 | `92` / `82` | Part 3 |
+| 10 | `99` / `89` | Part 10 |
+| 11 | `9A` / `8A` | Part 11 |
+
+Toutes les notes : note 60 (`0x3C`), vélocité 96. Mapping apparent **part N →
+canal MIDI N** (à confirmer en déclenchant chaque part individuellement).
+
+**Attendu (spec §1.1 + §1.3)** : "l'EMX2 utilise UN SEUL canal MIDI (Global MIDI
+Channel)" et "les CC affectent le part actuellement sélectionné en édition". La
+spec a posé l'archi entière (mirror 1 part à la fois, SysEx Pattern Write lent
+pour éditer un part non-actif) sur cette hypothèse.
+
+**Observé** : au moins pour les **notes**, chaque part a son propre canal MIDI.
+
+**Impact app (potentiellement majeur)** :
+- Si les **CC** se comportent aussi par canal (à tester !), on peut adresser
+  chaque part directement → **la contrainte §1.1 tombe**, et le workaround SysEx
+  Pattern Write (~150-300 ms) pour les parts non-actifs devient **inutile** pour
+  les params CC-mappés. Énorme simplification + UX temps réel multi-part.
+- Ça change aussi la stratégie de détection du "current edit part" (§9) : le
+  canal des notes révèle quels parts **jouent**, pas lequel est sélectionné en
+  édition — mais c'est un signal exploitable de plus.
+
+**À NE PAS conclure trop vite** : seules les **notes** ont été observées. Le
+comportement des **CC** (knobs) n'a PAS encore été testé. Tout dépend de ça.
+
+**Tests requis pour trancher** :
+1. Déclencher chaque part 1→16 isolément, confirmer le mapping part→canal.
+2. Tourner un knob (ex: Cutoff) sur un part donné → le CC arrive-t-il sur le
+   canal de ce part, ou sur un canal global ?
+3. Envoyer un CC sur le canal d'un part **non sélectionné** → modifie-t-il ce
+   part (sans toucher l'edit part) ?
+
+**Action proposée** : **NE PAS coder l'archi §1.1 telle quelle.** Tester les 3
+points ci-dessus, puis réviser §1.1 avec Bastou. Candidat **ADR-001 : modèle
+d'adressage per-part (canal MIDI vs current-edit-part + SysEx)**.
+
+### 99.2 Chaque message MIDI apparaît en double dans le log
+
+**Observation** : chaque Note On/Off est loggé 2× à ~1 ms d'intervalle.
+
+**Cause probable** : l'EMX2 expose vraisemblablement **deux endpoints d'entrée
+USB-MIDI** (fréquent chez Korg), tous deux relayant le même flux ; OU le probe a
+attaché son handler deux fois (init cliqué 2×, on voit 2 "Accès accordé").
+
+**Impact app** : il faudra, en Phase 1, **dédupliquer** ou choisir explicitement
+le bon port d'entrée (ne pas attacher de listener à tous les inputs aveuglément).
+
+**Action proposée** : améliorer le probe pour étiqueter le port source de chaque
+message, et lister les ports observés. Noter le nombre exact de ports IN/OUT.
+
+### 99.3 _(template — à dupliquer pour chaque nouvelle anomalie)_
 
 **Observation** : ___
 **Attendu (spec / doc Korg, ref §___)** : ___

@@ -129,11 +129,15 @@ async function init() {
 function listPorts() {
   let txt = "";
   let firstOut = null;
+  let inputCount = 0;
   txt += "INPUTS:\n";
   for (const input of access.inputs.values()) {
+    inputCount++;
     txt += `  • name="${input.name}"  manufacturer="${input.manufacturer || "?"}"  id=${input.id}\n`;
-    input.onmidimessage = onMidi;
+    const label = input.name || input.id;
+    input.onmidimessage = (e) => onMidi(e, label);
   }
+  if (inputCount > 1) txt += `  ⚠️ ${inputCount} ports d'entrée → les messages peuvent apparaître en double (un par port). C'est normal.\n`;
   txt += "OUTPUTS:\n";
   for (const out of access.outputs.values()) {
     txt += `  • name="${out.name}"  manufacturer="${out.manufacturer || "?"}"  id=${out.id}\n`;
@@ -145,11 +149,12 @@ function listPorts() {
   $("ports").textContent = txt || "(aucun port détecté — l'Electribe est-elle branchée ?)";
 }
 
-function onMidi(e) {
+function onMidi(e, port = "?") {
   const d = e.data;
+  const src = `«${port}»`;
   // SysEx
   if (d[0] === 0xF0) {
-    log("log-sys", "SysEx IN  : " + hexArr(d));
+    log("log-sys", `SysEx IN  ${src}: ` + hexArr(d));
     parseIdentity(d);
     return;
   }
@@ -158,17 +163,17 @@ function onMidi(e) {
   if (statusByte === 0xB0) { // Control Change
     const cc = d[1], val = d[2];
     const name = CC_NAMES[cc] ? ` (${CC_NAMES[cc]})` : "";
-    log("log-in", `CC IN     : ch${ch+1}  CC ${cc}${name} = ${val}    [${hexArr(d)}]`);
+    log("log-in", `CC IN     ${src}: ch${ch+1}  CC ${cc}${name} = ${val}    [${hexArr(d)}]`);
   } else if (statusByte === 0x90) {
-    log("log-in", `Note ON   : ch${ch+1}  note ${d[1]}  vel ${d[2]}    [${hexArr(d)}]`);
+    log("log-in", `Note ON   ${src}: ch${ch+1}  note ${d[1]}  vel ${d[2]}    [${hexArr(d)}]`);
   } else if (statusByte === 0x80) {
-    log("log-in", `Note OFF  : ch${ch+1}  note ${d[1]}    [${hexArr(d)}]`);
-  } else if (d[0] === 0xC0 || statusByte === 0xC0) {
-    log("log-in", `ProgChange: ch${ch+1}  pgm ${d[1]}    [${hexArr(d)}]`);
+    log("log-in", `Note OFF  ${src}: ch${ch+1}  note ${d[1]}    [${hexArr(d)}]`);
+  } else if (statusByte === 0xC0) {
+    log("log-in", `ProgChange${src}: ch${ch+1}  pgm ${d[1]}    [${hexArr(d)}]`);
   } else if (d[0] >= 0xF8) {
     // clock / realtime — on ignore pour pas spammer
   } else {
-    log("log-in", "IN        : " + hexArr(d));
+    log("log-in", `IN        ${src}: ` + hexArr(d));
   }
 }
 
