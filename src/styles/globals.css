@@ -1,0 +1,55 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Backgrounds */
+  --color-bg: #0a0a0b;
+  --color-bg-2: #131316;
+  --color-bg-3: #1c1c20;
+  --color-line: #2a2a2f;
+  --color-line-bright: #3a3a42;
+
+  /* Text */
+  --color-text: #e8e6e3;
+  --color-text-dim: #8a8a90;
+  --color-text-muted: #5a5a60;
+
+  /* Accents */
+  --color-blue: #4dabf7;
+  --color-blue-bright: #74c0fc;
+  --color-orange: #ff6b35;
+  --color-green: #51cf66;
+  --color-yellow: #fcc419;
+  --color-red: #ff5252;
+
+  /* 16 part colors (spec §9.1) */
+  --color-part-01: #e64f4f;
+  --color-part-02: #ff8c4a;
+  --color-part-03: #fcc419;
+  --color-part-04: #c9d44a;
+  --color-part-05: #69db7c;
+  --color-part-06: #38d9a9;
+  --color-part-07: #4dabf7;
+  --color-part-08: #748ffc;
+  --color-part-09: #b197fc;
+  --color-part-10: #da77f2;
+  --color-part-11: #f06595;
+  --color-part-12: #ff8787;
+  --color-part-13: #adb5bd;
+  --color-part-14: #91a7ff;
+  --color-part-15: #66d9e8;
+  --color-part-16: #ffd43b;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family:
+    'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
