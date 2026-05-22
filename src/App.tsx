@@ -3,6 +3,8 @@ import { BrowserCheck } from './components/BrowserCheck.tsx';
 import { PermissionPrompt } from './components/PermissionPrompt.tsx';
 import { ConnectionStatus } from './components/ConnectionStatus.tsx';
 import { MultiTabGuard } from './components/MultiTabGuard.tsx';
+import { PartGrid } from './components/PartGrid.tsx';
+import { PartDetail } from './components/PartDetail.tsx';
 
 export function App() {
   const state = useConnectionStore((s) => s.state);
@@ -26,8 +28,12 @@ export function App() {
           Companion pour Korg Electribe 2
         </p>
       </header>
-      <main className="mx-auto max-w-3xl p-6">
+      <main className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
         <ConnectionStatus />
+        <div className="grid gap-6 md:grid-cols-[1fr_320px]">
+          <PartGrid />
+          <PartDetail />
+        </div>
       </main>
     </div>
   );
