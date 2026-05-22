@@ -88,10 +88,13 @@ mesurer les latences round-trip.
 |---|---|
 | Nom port IN (OS) | _à remplir_ |
 | Nom port OUT (OS) | _à remplir_ |
-| Nom port (Chrome `MIDIInput.name`) | _à remplir_ |
+| Nom port (Chrome `MIDIInput.name`) | **`electribe2`** (observé 2026-05-22) |
 | Nom port (Chrome `MIDIOutput.name`) | _à remplir_ |
 | `MIDIInput.manufacturer` | _à remplir_ |
 | `MIDIInput.id` (stable ?) | _à remplir_ |
+
+⚠️ Détection auto Phase 1 : matcher sur `/electribe/i` (le name observé est
+`electribe2`, sans espace).
 
 ### 1.4 Réglages machine recommandés avant tests
 
@@ -146,16 +149,20 @@ F0 7E 0g 06 02 42 23 01 00 00 vMaj vMin vRel 00 F7
 - Délai de réponse (ms) — utile pour calibrer le timeout (spec : 1 s, mais en pratique souvent < 50 ms)
 - `g` extrait → doit matcher le Global Channel réglé en §1.4
 
-**Findings** :
+**Findings (2026-05-22)** :
 
 ```
-[ ] Réponse reçue              : OUI / NON
-[ ] Hex brut                   : _________________________________________________
-[ ] Latence (ms)               : ____
-[ ] Global Channel décodé (g)  : ____
-[ ] Version (Maj.Min.Rel)      : ____.____.____
-[ ] Conforme spec              : ✅ / ⚠️ / ❌
-[ ] Notes                      :
+[x] Réponse reçue              : OUI
+[x] Hex brut                   : F0 7E 00 06 02 42 23 01 00 00 02 02 00 00 F7
+[x] Latence (ms)               : ~21 ms (envoi .169 → réponse .190)
+[x] Global Channel décodé (g)  : 0  (= MIDI channel 1)
+[x] Version (octets bruts)     : 02 02 00 00  → firmware machine connu = 2.02
+[x] Conforme spec              : ✅ (family 23 01, member 00 00 conformes §6.3)
+[x] Notes                      : réponse reçue 2× (les 2 ports d'entrée USB, cf. 99.2).
+                                  Device ID dans la réponse = 00 (la requête utilisait
+                                  7F = Any). Décodage version à revoir : la spec lit
+                                  data[10..12] = 02,02,00 → "2.2.0" mais le firmware
+                                  réel est "2.02". Voir anomalie 99.4.
 ```
 
 ### 2.2 Test — Identity Request « Channel-spécifique »
@@ -373,26 +380,35 @@ Pour chaque param testé :
 
 ### 4.1 Tableau de résultats
 
-| Knob / bouton | CC attendu | CC reçu | Plage observée | Résolution (≈ valeurs distinctes) | Conforme |
+**Findings (2026-05-22)** : test fait avec **Part 6 sélectionné** sur la machine.
+**TOUS les CC reçus sont arrivés sur le canal MIDI 6** (`B5 ...`) → confirme que
+les knobs émettent sur le canal du **part sélectionné** (Part 6 → ch6). Voir
+anomalie 99.1 (résolution). Tous les numéros de CC conformes à §6.4.
+
+| Knob / bouton | CC attendu | CC reçu | Canal | Plage observée | Conforme |
 |---|---|---|---|---|---|
-| Level | 7 | _à remplir_ | _à remplir_ | _à remplir_ | ⏳ |
-| Pan | 10 | | | | ⏳ |
-| Resonance | 71 | | | | ⏳ |
-| EG Decay/Release | 72 | | | | ⏳ |
-| EG Attack | 73 | | | | ⏳ |
-| Cutoff | 74 | | | | ⏳ |
-| OSC Pitch | 80 | | | | ⏳ |
-| Glide | 81 | | | | ⏳ |
-| OSC Edit | 82 | | | | ⏳ |
-| Filter EG Int | 83 | | | | ⏳ |
-| Mod Depth | 85 | | | | ⏳ |
-| Mod Speed | 86 | | | | ⏳ |
-| IFX Edit | 87 | | | | ⏳ |
-| Master FX X (touch) | 102 | | | | ⏳ |
-| Master FX Y (touch) | 103 | | | | ⏳ |
-| IFX On/Off button | 104 | | | | ⏳ |
-| MFX Send On/Off | 105 | | | | ⏳ |
-| MFX On/Off button | 106 | | | | ⏳ |
+| Level | 7 | **7** | ch6 | 100→89 (descendant) | ✅ |
+| Pan | 10 | **10** | ch6 | 125→121 (zone droite) | ✅ |
+| Resonance | 71 | **71** | ch6 | 10↔22 | ✅ |
+| EG Decay/Release | 72 | **72** | ch6 | 20↔32 | ✅ |
+| EG Attack | 73 | **73** | ch6 | 63↔76 | ✅ |
+| Cutoff | 74 | **74** | ch6 | 99↔126 | ✅ |
+| OSC Pitch | 80 | **80** | ch6 | 62↔63 (≈ centre 64, signed) | ✅ |
+| Glide | 81 | — | — | non testé | ⏳ |
+| OSC Edit | 82 | **82** | ch6 | 88↔101 | ✅ |
+| Filter EG Int | 83 | **83** | ch6 | 54↔64 (≈ centre 64, signed) | ✅ |
+| Mod Depth | 85 | **85** | ch6 | 107↔118 | ✅ |
+| Mod Speed | 86 | **86** | ch6 | 53↔56 | ✅ |
+| IFX Edit | 87 | **87** | ch6 | 15↔23 | ✅ |
+| Master FX X (touch) | 102 | — | — | non testé | ⏳ |
+| Master FX Y (touch) | 103 | — | — | non testé | ⏳ |
+| IFX On/Off button | 104 | — | — | non testé | ⏳ |
+| MFX Send On/Off | 105 | — | — | non testé | ⏳ |
+| MFX On/Off button | 106 | — | — | non testé | ⏳ |
+
+**Reste à tester en inbound** : Glide (81), Master FX X/Y (102/103, via le ruban
+tactile), et les 3 toggles (104/105/106, via les boutons). Plus : confirmer le
+mapping part→canal en sélectionnant d'autres parts (Part 1 → ch1 ? Part 16 → ch16 ?).
 
 ### 4.2 Test — débit max sur tournage rapide
 
@@ -441,18 +457,33 @@ la taille et la structure.
 - Header reçu : `F0 42 3g 00 01 23 40 ...` (`0x40` = `CURRENT_PATTERN_DUMP`)
 - Taille totale : **18 725 + 8 = 18 733 octets** (spec §6.7 : data raw 16 384 → 18 725 encoded MIDI ; + envelope 7 bytes header + 1 footer).
 
-**Findings** :
+**Findings (2026-05-22)** :
 
 ```
-[ ] Request envoyé hex            : F0 42 3_ 00 01 23 10 F7
-[ ] Premier byte reçu après (ms)  : ____
-[ ] F7 final reçu après (ms)      : ____  (= round-trip total)
-[ ] Taille du SysEx reçu (bytes)  : ____
-[ ] Header décodé (data[0..6])    : ____ ____ ____ ____ ____ ____ ____
-[ ] Function byte (data[6])       : ____  (attendu: 0x40)
-[ ] Conforme spec                 : ✅ / ⚠️ / ❌
-[ ] Notes                         :
+[x] Request envoyé hex            : F0 42 30 00 01 23 10 F7
+[x] F7 final reçu après (ms)      : 63.4 ms (round-trip total)
+[x] Taille du SysEx reçu (bytes)  : 18733  (= 7 header + 18725 payload + 1 F7) ✅
+[x] Header décodé (data[0..6])    : F0 42 30 00 01 23 40  (function 0x40 ✅)
+[x] Conforme spec                 : ✅
+[x] Notes                         : capture sauvée dans tests/fixtures/pattern-dump-init.bin
 ```
+
+**Validation structure (décodage hors-ligne du .bin, conversion 7→8 bit)** :
+
+```
+[x] Payload encodé                : 18725 octets
+[x] Décodé 7→8 bit                : 16384 octets exactement ✅ (valide conversion.ts)
+[x] Header @0                     : 50 54 53 54 = "PTST" ✅
+[x] Nom pattern (bytes 16..33)    : "Init Pattern" ✅
+[x] Tempo (bytes 34..35 LE)       : 1600 → 160.0 BPM (÷10) ✅
+[x] swing=0 length=3 beat=0 key=6 scale=2 chordSet=2 playLevel=0
+[x] Footer "PTED"                 : offset 15356 ✅ (après Part 16 @15103)
+[x] Part 1 @offset 2048           : 00 01 03 01 00 00 00 00 (premiers octets)
+```
+
+⚠️ Le décodage 7→8 bit, les offsets header/nom/tempo/footer et le bloc Part @2048
+**correspondent exactement** à la spec §6.7/§6.8. Le parser Phase 4 peut être
+écrit et testé directement contre cette fixture.
 
 ### 5.2 Test — Round-trip répété (jitter & stabilité)
 
@@ -649,6 +680,19 @@ Glitch ? Refus ?
 **But** : mesurer combien de temps / combien de mesures avant que le pattern
 change réellement après envoi de `Bank Select + Program Change`.
 
+> **Validation passive (2026-05-22)** : en changeant de pattern sur la machine,
+> celle-ci a **émis** la séquence sur le canal global (ch1) :
+> ```
+> B0 00 00   ; Bank Select MSB = 0
+> B0 20 01   ; Bank Select LSB = 1
+> C0 4C      ; Program Change = 76  → slot 127 + 76 = 203
+> ...
+> C0 4D      ; Program Change = 77  → slot 204
+> ```
+> ✅ Confirme le **format §6.6** pour les slots > 127 (bankLSB=1, pc = slot−127)
+> et que le switch pattern passe par le **canal global**, pas un canal de part.
+> Reste à mesurer la **latence** quand l'app **émet** ce switch (tests ci-dessous).
+
 ### 7.1 Test — Switch arrêté (machine en stop)
 
 **Procédure** :
@@ -722,6 +766,12 @@ la dernière banque, ou y a-t-il un fallback ?
 
 **But** : déterminer le débit CC max que l'EMX2 peut absorber sans perte ni lag,
 pour calibrer le throttle outbound (spec §6.11).
+
+> **Statut (2026-05-22)** : test hands-on **non concluant** (difficile à juger à
+> l'œil/oreille avec l'outil jetable). **Non bloquant.** Conformément à la spec
+> §6.11, calibration empirique reportée en Phase 1/3 : on instrumentera l'app
+> (compteur d'envois, mesure de lag) pour mesurer précisément. Défaut de départ
+> retenu : **flush 20 ms = 50 Hz**, à ajuster ensuite.
 
 ### 8.1 Test — Burst à 50 Hz sur Cutoff (CC 74)
 
@@ -919,15 +969,33 @@ marchera pas).
 
 ### 9.5 Synthèse — méthode retenue
 
-À remplir après les tests §9.1-§9.4 :
+**RÉSOLU (2026-05-22)** — une 5ᵉ méthode, plus simple et fiable, est tombée des
+tests d'émission/réception CC :
+
+**Méthode E — Canal des CC entrants** : quand l'utilisateur tourne un knob
+physique, la machine émet le CC **sur le canal du part sélectionné** (confirmé :
+Part 6 → ch6, cf. §4.1). Donc :
+
+> À chaque CC entrant, `canal + 1` = numéro du part actuellement sélectionné en
+> édition sur la machine. L'app met à jour le highlight de l'active part en
+> temps réel, dès le premier knob touché.
 
 ```
-[ ] Méthode retenue              : A / B / C / D / Combinaison / Aucune
-[ ] Stratégie hybride proposée   :
-[ ] Précisions techniques        :
-[ ] Impact UX (latence détection):
-[ ] Décision à acter en ADR ?    : OUI / NON  → ADR-NNN
+[x] Méthode retenue              : E (canal des CC entrants) — primaire
+[x] Stratégie                    : sur tout CC entrant, part actif = (canal MIDI).
+                                   Fallback : dernier part connu au connect (ou
+                                   demander un tweak / proposer sélection manuelle
+                                   tant qu'aucun CC n'est arrivé).
+[x] Précisions techniques        : ne nécessite aucun polling SysEx. Quasi zéro
+                                   coût. Limite : tant que l'utilisateur n'a pas
+                                   touché un knob après connexion, le part actif
+                                   est inconnu → état "indéterminé" au départ.
+[x] Impact UX (latence détection): instantané (dès le 1er CC).
+[x] Décision à acter en ADR      : OUI → ADR-001 (docs/DECISIONS.md)
 ```
+
+Hypothèses A/C/D non retenues (inutiles vu E). B (inférence par valeurs) devient
+superflue.
 
 ---
 
@@ -1010,7 +1078,109 @@ Débrancher / rebrancher pendant que l'app théorique est connectée.
 > Toutes les divergences entre ce qu'on observe et ce que la spec / la doc Korg
 > annoncent. Format : titre court, ce qui est attendu, ce qui se passe, impact.
 
-### 99.1 _(template)_
+### 99.1 Les parts transmettent les notes sur des canaux MIDI individuels (contredit §1.1)
+
+**Observation (2026-05-22, capture playback ~80 BPM, firmware à confirmer)** :
+pendant la lecture d'un pattern, l'EMX2 a émis des Note On/Off sur **plusieurs
+canaux MIDI distincts** — un par part :
+
+| Canal MIDI observé | Status hex | Part présumé |
+|---|---|---|
+| 2 | `91` / `81` | Part 2 |
+| 3 | `92` / `82` | Part 3 |
+| 10 | `99` / `89` | Part 10 |
+| 11 | `9A` / `8A` | Part 11 |
+
+Toutes les notes : note 60 (`0x3C`), vélocité 96. Mapping apparent **part N →
+canal MIDI N** (à confirmer en déclenchant chaque part individuellement).
+
+**Attendu (spec §1.1 + §1.3)** : "l'EMX2 utilise UN SEUL canal MIDI (Global MIDI
+Channel)" et "les CC affectent le part actuellement sélectionné en édition". La
+spec a posé l'archi entière (mirror 1 part à la fois, SysEx Pattern Write lent
+pour éditer un part non-actif) sur cette hypothèse.
+
+**Observé** : au moins pour les **notes**, chaque part a son propre canal MIDI.
+
+**Impact app (potentiellement majeur)** :
+- Si les **CC** se comportent aussi par canal (à tester !), on peut adresser
+  chaque part directement → **la contrainte §1.1 tombe**, et le workaround SysEx
+  Pattern Write (~150-300 ms) pour les parts non-actifs devient **inutile** pour
+  les params CC-mappés. Énorme simplification + UX temps réel multi-part.
+- Ça change aussi la stratégie de détection du "current edit part" (§9) : le
+  canal des notes révèle quels parts **jouent**, pas lequel est sélectionné en
+  édition — mais c'est un signal exploitable de plus.
+
+**À NE PAS conclure trop vite** : seules les **notes** ont été observées. Le
+comportement des **CC** (knobs) n'a PAS encore été testé. Tout dépend de ça.
+
+**Tests requis pour trancher** :
+1. Déclencher chaque part 1→16 isolément, confirmer le mapping part→canal.
+2. Tourner un knob (ex: Cutoff) sur un part donné → le CC arrive-t-il sur le
+   canal de ce part, ou sur un canal global ?
+3. Envoyer un CC sur le canal d'un part **non sélectionné** → modifie-t-il ce
+   part (sans toucher l'edit part) ?
+
+**Action proposée** : **NE PAS coder l'archi §1.1 telle quelle.** Tester les 3
+points ci-dessus, puis réviser §1.1 avec Bastou. Candidat **ADR-001 : modèle
+d'adressage per-part (canal MIDI vs current-edit-part + SysEx)**.
+
+**MISE À JOUR (2026-05-22, capture knobs §4.1)** : confirmation partielle. Avec
+Part 6 sélectionné, **tous les CC des knobs sont émis sur le canal 6**. Donc :
+- ✅ Point 2 (CC suit le canal du part) : **confirmé en RÉCEPTION**.
+- ✅ Mapping part N → canal N : fortement étayé (notes ch2/3/10/11 + CC ch6).
+- ⏳ Point 3 (ENVOYER un CC sur le canal d'un part le pilote-t-il, même non
+  sélectionné ?) : **reste à confirmer en ÉMISSION**. C'est le dernier test
+  manquant pour valider l'archi multi-part temps réel. À faire en ajoutant un
+  bouton d'envoi CC au probe, ou tôt en Phase 1/3.
+
+→ Hypothèse d'archi forte : ~~on peut mirror et piloter les 16 parts en temps
+réel via leurs canaux MIDI respectifs~~. **INFIRMÉE en émission, voir ci-dessous.**
+
+**RÉSOLUTION (2026-05-22, test d'émission CC) :**
+
+| Scénario | Résultat |
+|---|---|
+| Part 6 sélectionné sur la machine + envoi CC74 sur **canal 6** | ✅ le Cutoff de Part 6 bouge |
+| Part 1 sélectionné sur la machine + envoi CC74 sur **canal 6** | ❌ Part 6 **ne bouge pas** |
+
+**Conclusion** : en **réception**, la machine applique les CC au **part
+actuellement sélectionné en édition**, pas au part correspondant au canal. On ne
+peut donc PAS adresser un part non-sélectionné via son canal MIDI.
+
+→ La contrainte spec **§1.1 est CONFIRMÉE** pour le contrôle CC : tweaks temps
+réel = part actif uniquement. Édition d'un part non-actif = **SysEx Pattern
+Write** (lent), comme prévu.
+
+**Asymétrie importante (à retenir)** :
+- **Émission machine → app** : chaque part émet sur SON canal (Part N → canal N).
+  Le part sélectionné émet ses tweaks de knob sur son propre canal.
+- **Réception app → machine** : le canal est (au moins en partie) ignoré ; le CC
+  va sur le part sélectionné. Envoyer sur le canal du part sélectionné **marche**
+  (test 2 ✅) → règle sûre côté app : **émettre sur le canal du part actif**.
+- Détail restant (non bloquant) : la machine ignore-t-elle totalement le canal en
+  RX, ou exige-t-elle le canal du part sélectionné ? À épingler en Phase 3.
+  Défaut sûr = émettre sur le canal du part actif (validé).
+
+→ **Effet de bord positif majeur** : l'asymétrie d'émission résout la détection
+du current edit part (voir §9.5).
+
+→ Décision actée : **ADR-001** (`docs/DECISIONS.md`).
+
+### 99.2 Chaque message MIDI apparaît en double dans le log
+
+**Observation** : chaque Note On/Off est loggé 2× à ~1 ms d'intervalle.
+
+**Cause probable** : l'EMX2 expose vraisemblablement **deux endpoints d'entrée
+USB-MIDI** (fréquent chez Korg), tous deux relayant le même flux ; OU le probe a
+attaché son handler deux fois (init cliqué 2×, on voit 2 "Accès accordé").
+
+**Impact app** : il faudra, en Phase 1, **dédupliquer** ou choisir explicitement
+le bon port d'entrée (ne pas attacher de listener à tous les inputs aveuglément).
+
+**Action proposée** : améliorer le probe pour étiqueter le port source de chaque
+message, et lister les ports observés. Noter le nombre exact de ports IN/OUT.
+
+### 99.3 _(template — à dupliquer pour chaque nouvelle anomalie)_
 
 **Observation** : ___
 **Attendu (spec / doc Korg, ref §___)** : ___
