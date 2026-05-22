@@ -70,9 +70,10 @@ spec'er après MVP. Implique probablement un appel API (clé, coût, offline-fir
 
 | # | Question | Statut |
 |---|---|---|
-| B.1 | Adressage per-part : peut-on **émettre** un CC sur le canal d'un part pour le piloter (même non sélectionné) ? | 🟡 Réception confirmée (CC suit le part sélectionné, ch6). **Émission à confirmer.** Bloque ADR-001. |
-| B.2 | Mapping exact part N → canal MIDI N sur les 16 parts ? | 🟡 Fortement étayé (notes ch2/3/10/11, CC ch6). À confirmer part par part. |
-| B.3 | Détection du **current edit part** depuis l'app (aucun message documenté) ? | 🔴 Ouvert. Le canal des CC knobs révèle le part sélectionné quand on tweak un knob → piste forte (cf. MIDI_FINDINGS §9). |
+| B.1 | Adressage per-part : peut-on **émettre** un CC sur le canal d'un part pour le piloter (même non sélectionné) ? | 🟢 **RÉSOLU : NON.** CC reçu → part sélectionné, le canal n'adresse pas un part non-actif. ADR-001. |
+| B.2 | Mapping exact part N → canal MIDI N sur les 16 parts ? | 🟡 Fortement étayé (notes ch2/3/10/11, CC ch6). À confirmer part par part (non bloquant). |
+| B.3 | Détection du **current edit part** depuis l'app (aucun message documenté) ? | 🟢 **RÉSOLU : canal des CC entrants** (Méthode E). ADR-001. |
+| B.10 | RX : la machine ignore-t-elle totalement le canal, ou exige-t-elle le canal du part actif ? | 🟡 Non bloquant. Défaut sûr = émettre sur le canal du part actif. À épingler Phase 3. |
 | B.4 | Comportement CC quand un param a une **motion sequence** enregistrée : override ou ignore ? | 🔴 Ouvert (spec §12). |
 | B.5 | Mute / Solo per part via SysEx Pattern Write (byte Mute) ? | 🔴 Ouvert (spec §12). |
 | B.6 | Latence réelle Program Change (ms / mesures) à l'**émission** ? | 🔴 À mesurer (format §6.6 validé en réception). |

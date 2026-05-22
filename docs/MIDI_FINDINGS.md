@@ -963,15 +963,33 @@ marchera pas).
 
 ### 9.5 Synthèse — méthode retenue
 
-À remplir après les tests §9.1-§9.4 :
+**RÉSOLU (2026-05-22)** — une 5ᵉ méthode, plus simple et fiable, est tombée des
+tests d'émission/réception CC :
+
+**Méthode E — Canal des CC entrants** : quand l'utilisateur tourne un knob
+physique, la machine émet le CC **sur le canal du part sélectionné** (confirmé :
+Part 6 → ch6, cf. §4.1). Donc :
+
+> À chaque CC entrant, `canal + 1` = numéro du part actuellement sélectionné en
+> édition sur la machine. L'app met à jour le highlight de l'active part en
+> temps réel, dès le premier knob touché.
 
 ```
-[ ] Méthode retenue              : A / B / C / D / Combinaison / Aucune
-[ ] Stratégie hybride proposée   :
-[ ] Précisions techniques        :
-[ ] Impact UX (latence détection):
-[ ] Décision à acter en ADR ?    : OUI / NON  → ADR-NNN
+[x] Méthode retenue              : E (canal des CC entrants) — primaire
+[x] Stratégie                    : sur tout CC entrant, part actif = (canal MIDI).
+                                   Fallback : dernier part connu au connect (ou
+                                   demander un tweak / proposer sélection manuelle
+                                   tant qu'aucun CC n'est arrivé).
+[x] Précisions techniques        : ne nécessite aucun polling SysEx. Quasi zéro
+                                   coût. Limite : tant que l'utilisateur n'a pas
+                                   touché un knob après connexion, le part actif
+                                   est inconnu → état "indéterminé" au départ.
+[x] Impact UX (latence détection): instantané (dès le 1er CC).
+[x] Décision à acter en ADR      : OUI → ADR-001 (docs/DECISIONS.md)
 ```
+
+Hypothèses A/C/D non retenues (inutiles vu E). B (inférence par valeurs) devient
+superflue.
 
 ---
 
@@ -1109,10 +1127,38 @@ Part 6 sélectionné, **tous les CC des knobs sont émis sur le canal 6**. Donc 
   manquant pour valider l'archi multi-part temps réel. À faire en ajoutant un
   bouton d'envoi CC au probe, ou tôt en Phase 1/3.
 
-→ Hypothèse d'archi forte : **on peut mirror et piloter les 16 parts en temps
-réel via leurs canaux MIDI respectifs** (pour les params CC-mappés). Le SysEx
-Pattern Write ne reste nécessaire que pour les params **SysEx-only** (OSC type,
-voice assign, filter type, etc.). À acter en ADR-001 une fois l'émission confirmée.
+→ Hypothèse d'archi forte : ~~on peut mirror et piloter les 16 parts en temps
+réel via leurs canaux MIDI respectifs~~. **INFIRMÉE en émission, voir ci-dessous.**
+
+**RÉSOLUTION (2026-05-22, test d'émission CC) :**
+
+| Scénario | Résultat |
+|---|---|
+| Part 6 sélectionné sur la machine + envoi CC74 sur **canal 6** | ✅ le Cutoff de Part 6 bouge |
+| Part 1 sélectionné sur la machine + envoi CC74 sur **canal 6** | ❌ Part 6 **ne bouge pas** |
+
+**Conclusion** : en **réception**, la machine applique les CC au **part
+actuellement sélectionné en édition**, pas au part correspondant au canal. On ne
+peut donc PAS adresser un part non-sélectionné via son canal MIDI.
+
+→ La contrainte spec **§1.1 est CONFIRMÉE** pour le contrôle CC : tweaks temps
+réel = part actif uniquement. Édition d'un part non-actif = **SysEx Pattern
+Write** (lent), comme prévu.
+
+**Asymétrie importante (à retenir)** :
+- **Émission machine → app** : chaque part émet sur SON canal (Part N → canal N).
+  Le part sélectionné émet ses tweaks de knob sur son propre canal.
+- **Réception app → machine** : le canal est (au moins en partie) ignoré ; le CC
+  va sur le part sélectionné. Envoyer sur le canal du part sélectionné **marche**
+  (test 2 ✅) → règle sûre côté app : **émettre sur le canal du part actif**.
+- Détail restant (non bloquant) : la machine ignore-t-elle totalement le canal en
+  RX, ou exige-t-elle le canal du part sélectionné ? À épingler en Phase 3.
+  Défaut sûr = émettre sur le canal du part actif (validé).
+
+→ **Effet de bord positif majeur** : l'asymétrie d'émission résout la détection
+du current edit part (voir §9.5).
+
+→ Décision actée : **ADR-001** (`docs/DECISIONS.md`).
 
 ### 99.2 Chaque message MIDI apparaît en double dans le log
 
