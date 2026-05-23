@@ -102,3 +102,40 @@ sans point de vérité matériel.
   aussi dans `MIDI_FINDINGS.md` à la prochaine passe doc.
 - ➡️ Hors scope volontaire (YAGNI) : noms des types de filtre / IFX / modulation /
   MFX (toujours affichés en index brut pour l'instant).
+
+---
+
+## ADR-003: Persistance des métadonnées de part — globale par slot (v1)
+
+Date: 2026-05-23
+Status: Accepted
+
+### Context
+
+Le nommage/coloration de part (`customName`, `customColor`, `customTag`) vivait
+uniquement dans le store Zustand en mémoire → perdu à chaque reload. La spec §7.1
+place ces champs dans `PartState`, lui-même imbriqué dans `PatternState.parts`
+(donc **par-pattern**), mais le schéma Dexie §7.4 ne prévoit **aucune table** pour
+les métadonnées de part, et l'app actuelle n'a qu'un store de 16 parts **global**
+(non lié à un slot de pattern). Le modèle par-pattern dépend du suivi du slot
+courant, qui relève de la Phase 6 (Pattern Catalog).
+
+### Decision
+
+- Persistance **globale par slot de part (1..16)** via une table Dexie `partMeta`
+  (`src/db/schema.ts`, store `partMeta: 'id'`), hors du modèle par-pattern de la
+  spec pour l'instant.
+- Écriture *fire-and-forget* dans `setMetadata`, lecture via `loadMetadata()`
+  appelée une fois au démarrage (`main.tsx`).
+- Schéma Dexie créé en version 1 avec `partMeta` + `settings` seulement ; les
+  tables `presets / patternMeta / setlists` (spec §7.4) seront ajoutées en
+  version 2 lors de la Phase 5+ (YAGNI).
+
+### Consequences
+
+- ✅ Les noms/couleurs survivent au reload (vérifié Playlist e2e : set → reload →
+  présent).
+- ⚠️ Sémantique « globale » : un nom posé sur la part 1 s'affiche pour tous les
+  patterns. Acceptable en v1 ; à migrer vers le modèle par-pattern
+  (`PatternMeta.partOverview`, spec §7.3) quand le slot courant sera suivi (Phase 6).
+- ➡️ Socle IndexedDB en place pour la Preset Library (Phase 5).
