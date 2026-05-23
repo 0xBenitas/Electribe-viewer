@@ -4,6 +4,7 @@
 // protéger le nommage dès maintenant — cf. docs/DECISIONS.md ADR-003.
 // Les tables presets / patternMeta / setlists arriveront en Phase 5+ (version 2).
 import Dexie, { type Table } from 'dexie';
+import type { Preset } from './types.ts';
 
 export interface PartMetaRow {
   /** Part id 1..16 (global, indépendant du pattern courant en v1). */
@@ -21,12 +22,17 @@ export interface SettingRow {
 export class EMXPilotDB extends Dexie {
   partMeta!: Table<PartMetaRow, number>;
   settings!: Table<SettingRow, string>;
+  presets!: Table<Preset, string>;
 
   constructor() {
     super('emx-pilot');
     this.version(1).stores({
       partMeta: 'id',
       settings: 'key',
+    });
+    // v2 : Preset Library (Phase 5). Les tables v1 sont héritées automatiquement.
+    this.version(2).stores({
+      presets: 'id, name, category, *tags, createdAt, updatedAt',
     });
   }
 }

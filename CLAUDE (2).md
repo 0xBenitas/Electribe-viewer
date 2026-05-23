@@ -81,11 +81,11 @@ Avant toute action, lis `emx-pilot-spec-v0.3.md` en entier. C'est la source de v
 | Phase | Status | Output principal |
 |---|---|---|
 | 0 — MIDI Validation | Done | `docs/MIDI_FINDINGS.md` rempli |
-| 1 — Foundation | In Progress | Vite + setup + MIDIClient base |
-| 2 — Part Pilot read-only | In Progress | Grille 16 parts + metadata locale |
-| 3 — Param Mirror | In Progress | CC bidirectionnel sur active part |
-| 4 — SysEx Pattern Dump | In Progress | Hydratation 16 parts au connect |
-| 5 — Preset Library | Pending | Save/recall avec CC + SysEx |
+| 1 — Foundation | Done | Vite + setup + MIDIClient base |
+| 2 — Part Pilot read-only | Done | Grille 16 parts (8/ligne) + metadata persistée (IndexedDB) + noms d'oscillateurs |
+| 3 — Param Mirror | Done | CC bidirectionnel sur active part |
+| 4 — SysEx Pattern Dump | Done | Hydratation 16 parts au connect |
+| 5 — Preset Library | In Progress | 5a ✅ save + recall CC + library (search/filter) ; 5b ⏳ recall SysEx-only via Pattern Write |
 | 6 — Pattern Catalog | Pending | 250 slots + metadata + switch |
 | 7 — Setlist + XY Pad | Pending | Live builder + fullscreen XY |
 | 8 — PWA Polish | Pending | Service worker + export/import |

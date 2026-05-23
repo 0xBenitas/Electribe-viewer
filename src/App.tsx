@@ -9,6 +9,7 @@ import { PartDetail } from './components/PartDetail.tsx';
 import { ParamPanel } from './components/ParamPanel.tsx';
 import { KnobModeBadge } from './components/KnobModeBadge.tsx';
 import { PatternInfo } from './components/PatternInfo.tsx';
+import { PresetLibrary } from './components/PresetLibrary.tsx';
 
 export function App() {
   const state = useConnectionStore((s) => s.state);
@@ -40,6 +41,7 @@ export function App() {
           <PartDetail />
           <ParamPanel />
         </div>
+        <PresetLibrary />
       </main>
     </div>
   );
