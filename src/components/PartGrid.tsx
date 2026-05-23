@@ -10,18 +10,23 @@ export function PartGrid() {
   const pattern = useCurrentPatternStore((s) => s.pattern);
 
   return (
-    <div className="grid grid-cols-4 gap-2">
-      {parts.map((part) => (
-        <PartTile
-          key={part.id}
-          part={part}
-          oscType={pattern?.parts[part.id - 1]?.oscType ?? null}
-          muted={pattern?.parts[part.id - 1]?.mute ?? false}
-          selected={part.id === selectedPartId}
-          active={part.id === activePartId}
-          onSelect={selectPart}
-        />
-      ))}
-    </div>
+    <section className="flex flex-col gap-2">
+      <h2 className="text-xs font-bold uppercase tracking-wider text-text-dim">
+        Parts
+      </h2>
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+        {parts.map((part) => (
+          <PartTile
+            key={part.id}
+            part={part}
+            oscType={pattern?.parts[part.id - 1]?.oscType ?? null}
+            muted={pattern?.parts[part.id - 1]?.mute ?? false}
+            selected={part.id === selectedPartId}
+            active={part.id === activePartId}
+            onSelect={selectPart}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
