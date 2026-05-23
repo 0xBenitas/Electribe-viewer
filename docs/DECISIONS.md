@@ -61,3 +61,44 @@ révélé une **asymétrie** entre émission et réception MIDI :
 
 `docs/MIDI_FINDINGS.md` §4.1 (CC entrants per-part), anomalie 99.1 (résolution),
 §9.5 (méthode E), tests d'émission CC du 2026-05-22.
+
+---
+
+## ADR-002: Mapping valeur SysEx « Oscillator Type » → nom d'oscillateur
+
+Date: 2026-05-23
+Status: Accepted (offset confirmé sur hardware le 2026-05-23)
+
+### Context
+
+Le Pattern Dump expose un champ `oscType` par part (parser : `raw[base+8] |
+raw[base+9]<<8`). La doc MIDI Korg (`electribe_MIDIimp.txt`, offset 8~9) le
+documente « Oscillator Type | 0~500 ». Le Parameter Guide
+(`electribe_PG_E4.pdf`) liste **409 oscillateurs nommés**, numérotés 1..409 à
+l'affichage machine. L'UI n'affichait que la valeur brute (« OSC 137 »).
+
+Les 409 noms + catégories ont été extraits du PDF (table complète, 0 trou) vers
+`src/data/oscillators.ts`. Reste l'ambiguïté du **décalage** entre la valeur
+brute (plage déclarée 0~500) et le numéro d'affichage (1..409) : les valeurs du
+fixture `Init Pattern` (1..405) sont cohérentes sous l'hypothèse 1-based comme
+0-based — un simple off-by-one (ex. brut 230 → Guiro vs Cabasa) indiscernable
+sans point de vérité matériel.
+
+### Decision
+
+- Table `OSCILLATORS` indexée à 0 = oscillateur n°1 affiché.
+- Lookup `oscByRaw(raw) = OSCILLATORS[raw - 1 + OSC_RAW_OFFSET]`.
+- `OSC_RAW_OFFSET = 1` : **confirmé sur EMX2 le 2026-05-23**. La confrontation
+  à l'écran machine a montré un décalage d'un cran (app affichait l'oscillateur
+  n°brut, machine affichait n°brut+1) → interprétation 0-based, brut 0 ==
+  oscillateur n°1. Numéro d'affichage machine = valeur brute + 1.
+- UI : nom + catégorie sur les tuiles (`PartTile`) et le détail (`PartDetail`),
+  numéro brut conservé en référence (`#<raw>`).
+
+### Consequences
+
+- ✅ L'utilisateur voit ses instruments par nom, pas un index opaque.
+- ✅ Offset confirmé hardware (2026-05-23) : `OSC_RAW_OFFSET = 1`. À consigner
+  aussi dans `MIDI_FINDINGS.md` à la prochaine passe doc.
+- ➡️ Hors scope volontaire (YAGNI) : noms des types de filtre / IFX / modulation /
+  MFX (toujours affichés en index brut pour l'instant).
