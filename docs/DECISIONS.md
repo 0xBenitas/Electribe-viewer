@@ -139,3 +139,51 @@ courant, qui relève de la Phase 6 (Pattern Catalog).
   patterns. Acceptable en v1 ; à migrer vers le modèle par-pattern
   (`PatternMeta.partOverview`, spec §7.3) quand le slot courant sera suivi (Phase 6).
 - ➡️ Socle IndexedDB en place pour la Preset Library (Phase 5).
+
+---
+
+## ADR-004: Recall des params SysEx-only via edit buffer (Phase 5b) — infra hors-hardware d'abord
+
+Date: 2026-05-23
+Status: Proposed (infra prête + testée ; envoi hardware NON validé)
+
+### Context
+
+Le recall complet d'un preset (oscillateur, type de filtre/IFX, mod, voice — params
+que les CC ne savent pas régler) exige de renvoyer des données SysEx à la machine.
+Deux chemins :
+- **Current Pattern Dump (0x40)** renvoyé → chargé dans le **edit buffer** (volatile,
+  n'écrase **aucun** slot flash). ACK attendu `DATA_LOAD_COMPLETED` (0x23).
+- **Pattern Write Request (0x11)** vers un slot → **écriture flash destructive**.
+  ACK `WRITE_COMPLETED` (0x21).
+
+⚠️ `MIDI_FINDINGS §6` (séquence Pattern Write + ACK) a ses cases **non cochées** :
+l'écriture hardware n'a **jamais été validée** sur la machine, et la convention
+PH/PL du slot reste « à valider » (candidat probable 250 → `01 79`).
+
+### Decision
+
+1. **Recall = edit buffer (0x40), non destructif.** On part du dernier dump reçu
+   (stocké brut dans `currentPattern.raw`), on patche **uniquement** les octets
+   « son » SysEx-only du part visé (`patchPartSound`, offsets alignés sur le
+   parser), et on reconstruit un Current Pattern Dump (`buildCurrentPatternDump`).
+   Aucun slot n'est écrasé ; l'utilisateur revient à l'état d'origine en rechargeant
+   le pattern sur la machine.
+2. **Pattern Write (0x11) implémenté mais réservé** au futur « save vers slot »,
+   gardé derrière une validation hardware sur slot 250 (§6).
+3. **Aucun envoi câblé pour l'instant.** Le module `write.ts` ne fait que CONSTRUIRE
+   des octets, prouvés byte-exact par `write.test.ts` (encode/decode roundtrip +
+   patch chirurgical qui ne touche pas les parts voisins). La 1re écriture réelle
+   passera par une session de validation sur la machine (le 0x40 charge-t-il bien
+   l'edit buffer ? quel ACK ? comportement en playback ?).
+
+### Consequences
+
+- ✅ Progression à risque nul : toute la sérialisation est vérifiée hors-hardware.
+- ✅ Garde-fou clair : pas d'octet envoyé à la machine sans validation préalable.
+- ⏳ À faire avant de câbler l'envoi : valider sur hardware (slot 250 pour tout test
+  0x11), remplir `MIDI_FINDINGS §6`, puis brancher l'envoi edit-buffer au bouton
+  Recall (étendre le message « 14 params deferred » → appliqués).
+- ➡️ Patch limité aux params « son » (oscType, voiceAssign, filterType, modType,
+  ifxType, egOn, partPriority) ; mute / lastStep / groove / motionSeq restent hors
+  preset (état de séquence, pas de son).

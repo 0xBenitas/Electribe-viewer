@@ -59,8 +59,9 @@ function onMessage({ channel, data }: MidiMessage): void {
       }
     } else if (fn === SYSEX_FN.CURRENT_PATTERN_DUMP) {
       try {
-        const pattern = parsePatternDump(decodeCurrentPatternDump(data));
-        useCurrentPatternStore.getState().setPattern(pattern);
+        const raw = decodeCurrentPatternDump(data);
+        const pattern = parsePatternDump(raw);
+        useCurrentPatternStore.getState().setPattern(pattern, raw);
         useParamsStore.getState().hydrate(patternToParams(pattern));
       } catch {
         // ignore malformed dumps
