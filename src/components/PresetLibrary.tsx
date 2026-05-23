@@ -2,13 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePartsStore } from '../store/parts.ts';
 import { useCurrentPatternStore } from '../store/currentPattern.ts';
 import { usePresetsStore } from '../store/presets.ts';
-import { sendParam } from '../midi/bridge.ts';
-import {
-  ccRecallPlan,
-  partToSound,
-  autoCategory,
-  SYSEX_ONLY_PARAMS,
-} from '../midi/presets.ts';
+import { sendParam, recallSoundEditBuffer } from '../midi/bridge.ts';
+import { useSysexStore } from '../store/sysex.ts';
+import { ccRecallPlan, partToSound, autoCategory } from '../midi/presets.ts';
 import { oscByRaw } from '../data/oscillators.ts';
 import { PRESET_CATEGORIES, type PresetCategory, type Preset } from '../db/types.ts';
 
@@ -78,10 +74,21 @@ export function PresetLibrary() {
     }
     const plan = ccRecallPlan(preset.params);
     for (const step of plan) sendParam(step.param, step.value);
-    setStatus(
-      `« ${preset.name} » : ${plan.length} params live appliqués au part ${activePartId}. ` +
-        `${SYSEX_ONLY_PARAMS.length} params (oscillateur, filtre, IFX…) nécessitent un Pattern Write — à venir (Phase 5b).`,
-    );
+
+    const fullRecall = useSysexStore.getState().fullRecallEnabled;
+    if (fullRecall) {
+      const sent = recallSoundEditBuffer(activePartId - 1, preset.params);
+      setStatus(
+        sent
+          ? `« ${preset.name} » : ${plan.length} params CC + son SysEx (oscillateur, filtre, IFX…) envoyés au part ${activePartId} via edit buffer.`
+          : `« ${preset.name} » : params CC appliqués, mais envoi SysEx impossible (pas de dump courant).`,
+      );
+    } else {
+      setStatus(
+        `« ${preset.name} » : ${plan.length} params live appliqués au part ${activePartId}. ` +
+          `Oscillateur/filtre/IFX : active « recall SysEx complet » dans le labo SysEx (Phase 5b).`,
+      );
+    }
   };
 
   return (

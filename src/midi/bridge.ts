@@ -23,13 +23,16 @@ import {
   decodeCurrentPatternDump,
   parsePatternDump,
 } from './sysex/parser.ts';
+import { buildCurrentPatternDump, patchPartSound } from './sysex/write.ts';
 import { patternToParams } from './hydrate.ts';
 import type { ConnectionState } from './types.ts';
+import type { PartSound } from '../db/types.ts';
 import { useConnectionStore } from '../store/connection.ts';
 import { usePartsStore } from '../store/parts.ts';
 import { useParamsStore } from '../store/params.ts';
 import { useGlobalsStore } from '../store/globals.ts';
 import { useCurrentPatternStore } from '../store/currentPattern.ts';
+import { useSysexStore } from '../store/sysex.ts';
 
 let client: MIDIClient | null = null;
 const throttler = new CCThrottler((msg) => client?.send(msg));
@@ -66,6 +69,16 @@ function onMessage({ channel, data }: MidiMessage): void {
       } catch {
         // ignore malformed dumps
       }
+    } else if (fn === SYSEX_FN.DATA_LOAD_COMPLETED) {
+      useSysexStore.getState().pushEvent('load-ok');
+    } else if (fn === SYSEX_FN.DATA_LOAD_ERROR) {
+      useSysexStore.getState().pushEvent('load-error');
+    } else if (fn === SYSEX_FN.WRITE_COMPLETED) {
+      useSysexStore.getState().pushEvent('write-ok');
+    } else if (fn === SYSEX_FN.WRITE_ERROR) {
+      useSysexStore.getState().pushEvent('write-error');
+    } else if (fn === SYSEX_FN.DATA_FORMAT_ERROR) {
+      useSysexStore.getState().pushEvent('format-error');
     }
     return;
   }
@@ -100,4 +113,35 @@ export function sendParam(param: CCParam, value: number): void {
   const spec = CC_MAP[param];
   useParamsStore.getState().setLocal(partId, param, value);
   throttler.enqueue(partId - 1, spec.cc, encodeCC(spec, value));
+}
+
+function connectedChannel(): number | null {
+  const st = useConnectionStore.getState().state;
+  return st.status === 'connected' ? st.identity.globalChannel : null;
+}
+
+/**
+ * Phase 5b — renvoie un dump complet à la machine : chargé dans l'edit buffer
+ * (Current Pattern Dump 0x40, volatile, n'écrase aucun slot). Retourne false si
+ * non connecté. La machine répond DATA_LOAD_COMPLETED (0x23) → useSysexStore.
+ */
+export function sendCurrentPatternDump(raw: Uint8Array): boolean {
+  const gc = connectedChannel();
+  if (gc === null || !client) return false;
+  client.send(buildCurrentPatternDump(gc, raw));
+  useSysexStore.getState().pushEvent('sent');
+  return true;
+}
+
+/**
+ * Recall des params SysEx-only d'un son sur un part via edit buffer : patche le
+ * dump courant et le renvoie. Retourne false si pas de dump courant / non connecté.
+ */
+export function recallSoundEditBuffer(
+  partIndex: number,
+  sound: PartSound,
+): boolean {
+  const raw = useCurrentPatternStore.getState().raw;
+  if (!raw) return false;
+  return sendCurrentPatternDump(patchPartSound(raw, partIndex, sound));
 }

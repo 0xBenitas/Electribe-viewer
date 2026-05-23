@@ -10,6 +10,7 @@ import { ParamPanel } from './components/ParamPanel.tsx';
 import { KnobModeBadge } from './components/KnobModeBadge.tsx';
 import { PatternInfo } from './components/PatternInfo.tsx';
 import { PresetLibrary } from './components/PresetLibrary.tsx';
+import { SysexLab } from './components/SysexLab.tsx';
 
 export function App() {
   const state = useConnectionStore((s) => s.state);
@@ -42,6 +43,7 @@ export function App() {
           <ParamPanel />
         </div>
         <PresetLibrary />
+        <SysexLab />
       </main>
     </div>
   );
