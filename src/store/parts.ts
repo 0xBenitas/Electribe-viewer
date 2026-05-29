@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { db } from '../db/schema.ts';
 
 export type PartId = number; // 1..16
 
@@ -18,6 +19,8 @@ interface PartsStore {
   selectPart: (id: PartId) => void;
   setActivePart: (id: PartId | null) => void;
   setMetadata: (id: PartId, meta: Partial<Omit<PartMeta, 'id'>>) => void;
+  /** Hydrate custom metadata from IndexedDB (call once at startup). */
+  loadMetadata: () => Promise<void>;
 }
 
 const initialParts = (): PartMeta[] =>
@@ -30,7 +33,36 @@ export const usePartsStore = create<PartsStore>((set) => ({
   selectPart: (id) => set({ selectedPartId: id }),
   setActivePart: (id) => set({ activePartId: id }),
   setMetadata: (id, meta) =>
+    set((s) => {
+      const parts = s.parts.map((p) => (p.id === id ? { ...p, ...meta } : p));
+      const updated = parts.find((p) => p.id === id);
+      if (updated) {
+        // Persist through to IndexedDB (fire-and-forget, spec §7.4 / ADR-003).
+        void db.partMeta.put({
+          id,
+          customName: updated.customName,
+          customColor: updated.customColor,
+          customTag: updated.customTag,
+        });
+      }
+      return { parts };
+    }),
+  loadMetadata: async () => {
+    const rows = await db.partMeta.toArray();
+    if (rows.length === 0) return;
+    const byId = new Map(rows.map((r) => [r.id, r]));
     set((s) => ({
-      parts: s.parts.map((p) => (p.id === id ? { ...p, ...meta } : p)),
-    })),
+      parts: s.parts.map((p) => {
+        const r = byId.get(p.id);
+        return r
+          ? {
+              ...p,
+              customName: r.customName,
+              customColor: r.customColor,
+              customTag: r.customTag,
+            }
+          : p;
+      }),
+    }));
+  },
 }));

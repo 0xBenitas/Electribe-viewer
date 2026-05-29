@@ -9,6 +9,8 @@ import { PartDetail } from './components/PartDetail.tsx';
 import { ParamPanel } from './components/ParamPanel.tsx';
 import { KnobModeBadge } from './components/KnobModeBadge.tsx';
 import { PatternInfo } from './components/PatternInfo.tsx';
+import { PresetLibrary } from './components/PresetLibrary.tsx';
+import { SysexLab } from './components/SysexLab.tsx';
 
 export function App() {
   const state = useConnectionStore((s) => s.state);
@@ -31,17 +33,17 @@ export function App() {
           Companion pour Korg Electribe 2
         </p>
       </header>
-      <main className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
+      <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
         <ConnectionStatus />
         <KnobModeBadge />
         <PatternInfo />
-        <div className="grid gap-6 md:grid-cols-[1fr_340px]">
-          <PartGrid />
-          <div className="flex flex-col gap-6">
-            <PartDetail />
-            <ParamPanel />
-          </div>
+        <PartGrid />
+        <div className="grid items-start gap-6 md:grid-cols-2">
+          <PartDetail />
+          <ParamPanel />
         </div>
+        <PresetLibrary />
+        <SysexLab />
       </main>
     </div>
   );

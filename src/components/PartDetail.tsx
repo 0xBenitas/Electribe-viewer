@@ -1,6 +1,7 @@
 import { usePartsStore } from '../store/parts.ts';
 import { useCurrentPatternStore } from '../store/currentPattern.ts';
 import { partColor } from '../lib/colors.ts';
+import { oscByRaw } from '../data/oscillators.ts';
 
 const VOICE_ASSIGN = ['Mono1', 'Mono2', 'Poly1', 'Poly2'];
 
@@ -44,8 +45,15 @@ export function PartDetail() {
 
       {parsed ? (
         <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-          <dt className="text-text-dim">OSC type</dt>
-          <dd className="text-right text-text">{parsed.oscType}</dd>
+          <dt className="text-text-dim">Oscillateur</dt>
+          <dd className="text-right text-text">
+            {oscByRaw(parsed.oscType)?.name ?? '—'}
+            <span className="ml-1 text-text-muted">#{parsed.oscType}</span>
+          </dd>
+          <dt className="text-text-dim">Catégorie</dt>
+          <dd className="text-right text-text">
+            {oscByRaw(parsed.oscType)?.category ?? '—'}
+          </dd>
           <dt className="text-text-dim">Voice</dt>
           <dd className="text-right text-text">
             {VOICE_ASSIGN[parsed.voiceAssign] ?? parsed.voiceAssign}

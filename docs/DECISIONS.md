@@ -61,3 +61,129 @@ révélé une **asymétrie** entre émission et réception MIDI :
 
 `docs/MIDI_FINDINGS.md` §4.1 (CC entrants per-part), anomalie 99.1 (résolution),
 §9.5 (méthode E), tests d'émission CC du 2026-05-22.
+
+---
+
+## ADR-002: Mapping valeur SysEx « Oscillator Type » → nom d'oscillateur
+
+Date: 2026-05-23
+Status: Accepted (offset confirmé sur hardware le 2026-05-23)
+
+### Context
+
+Le Pattern Dump expose un champ `oscType` par part (parser : `raw[base+8] |
+raw[base+9]<<8`). La doc MIDI Korg (`electribe_MIDIimp.txt`, offset 8~9) le
+documente « Oscillator Type | 0~500 ». Le Parameter Guide
+(`electribe_PG_E4.pdf`) liste **409 oscillateurs nommés**, numérotés 1..409 à
+l'affichage machine. L'UI n'affichait que la valeur brute (« OSC 137 »).
+
+Les 409 noms + catégories ont été extraits du PDF (table complète, 0 trou) vers
+`src/data/oscillators.ts`. Reste l'ambiguïté du **décalage** entre la valeur
+brute (plage déclarée 0~500) et le numéro d'affichage (1..409) : les valeurs du
+fixture `Init Pattern` (1..405) sont cohérentes sous l'hypothèse 1-based comme
+0-based — un simple off-by-one (ex. brut 230 → Guiro vs Cabasa) indiscernable
+sans point de vérité matériel.
+
+### Decision
+
+- Table `OSCILLATORS` indexée à 0 = oscillateur n°1 affiché.
+- Lookup `oscByRaw(raw) = OSCILLATORS[raw - 1 + OSC_RAW_OFFSET]`.
+- `OSC_RAW_OFFSET = 1` : **confirmé sur EMX2 le 2026-05-23**. La confrontation
+  à l'écran machine a montré un décalage d'un cran (app affichait l'oscillateur
+  n°brut, machine affichait n°brut+1) → interprétation 0-based, brut 0 ==
+  oscillateur n°1. Numéro d'affichage machine = valeur brute + 1.
+- UI : nom + catégorie sur les tuiles (`PartTile`) et le détail (`PartDetail`),
+  numéro brut conservé en référence (`#<raw>`).
+
+### Consequences
+
+- ✅ L'utilisateur voit ses instruments par nom, pas un index opaque.
+- ✅ Offset confirmé hardware (2026-05-23) : `OSC_RAW_OFFSET = 1`. À consigner
+  aussi dans `MIDI_FINDINGS.md` à la prochaine passe doc.
+- ➡️ Hors scope volontaire (YAGNI) : noms des types de filtre / IFX / modulation /
+  MFX (toujours affichés en index brut pour l'instant).
+
+---
+
+## ADR-003: Persistance des métadonnées de part — globale par slot (v1)
+
+Date: 2026-05-23
+Status: Accepted
+
+### Context
+
+Le nommage/coloration de part (`customName`, `customColor`, `customTag`) vivait
+uniquement dans le store Zustand en mémoire → perdu à chaque reload. La spec §7.1
+place ces champs dans `PartState`, lui-même imbriqué dans `PatternState.parts`
+(donc **par-pattern**), mais le schéma Dexie §7.4 ne prévoit **aucune table** pour
+les métadonnées de part, et l'app actuelle n'a qu'un store de 16 parts **global**
+(non lié à un slot de pattern). Le modèle par-pattern dépend du suivi du slot
+courant, qui relève de la Phase 6 (Pattern Catalog).
+
+### Decision
+
+- Persistance **globale par slot de part (1..16)** via une table Dexie `partMeta`
+  (`src/db/schema.ts`, store `partMeta: 'id'`), hors du modèle par-pattern de la
+  spec pour l'instant.
+- Écriture *fire-and-forget* dans `setMetadata`, lecture via `loadMetadata()`
+  appelée une fois au démarrage (`main.tsx`).
+- Schéma Dexie créé en version 1 avec `partMeta` + `settings` seulement ; les
+  tables `presets / patternMeta / setlists` (spec §7.4) seront ajoutées en
+  version 2 lors de la Phase 5+ (YAGNI).
+
+### Consequences
+
+- ✅ Les noms/couleurs survivent au reload (vérifié Playlist e2e : set → reload →
+  présent).
+- ⚠️ Sémantique « globale » : un nom posé sur la part 1 s'affiche pour tous les
+  patterns. Acceptable en v1 ; à migrer vers le modèle par-pattern
+  (`PatternMeta.partOverview`, spec §7.3) quand le slot courant sera suivi (Phase 6).
+- ➡️ Socle IndexedDB en place pour la Preset Library (Phase 5).
+
+---
+
+## ADR-004: Recall des params SysEx-only via edit buffer (Phase 5b) — infra hors-hardware d'abord
+
+Date: 2026-05-23
+Status: Proposed (infra prête + testée ; envoi hardware NON validé)
+
+### Context
+
+Le recall complet d'un preset (oscillateur, type de filtre/IFX, mod, voice — params
+que les CC ne savent pas régler) exige de renvoyer des données SysEx à la machine.
+Deux chemins :
+- **Current Pattern Dump (0x40)** renvoyé → chargé dans le **edit buffer** (volatile,
+  n'écrase **aucun** slot flash). ACK attendu `DATA_LOAD_COMPLETED` (0x23).
+- **Pattern Write Request (0x11)** vers un slot → **écriture flash destructive**.
+  ACK `WRITE_COMPLETED` (0x21).
+
+⚠️ `MIDI_FINDINGS §6` (séquence Pattern Write + ACK) a ses cases **non cochées** :
+l'écriture hardware n'a **jamais été validée** sur la machine, et la convention
+PH/PL du slot reste « à valider » (candidat probable 250 → `01 79`).
+
+### Decision
+
+1. **Recall = edit buffer (0x40), non destructif.** On part du dernier dump reçu
+   (stocké brut dans `currentPattern.raw`), on patche **uniquement** les octets
+   « son » SysEx-only du part visé (`patchPartSound`, offsets alignés sur le
+   parser), et on reconstruit un Current Pattern Dump (`buildCurrentPatternDump`).
+   Aucun slot n'est écrasé ; l'utilisateur revient à l'état d'origine en rechargeant
+   le pattern sur la machine.
+2. **Pattern Write (0x11) implémenté mais réservé** au futur « save vers slot »,
+   gardé derrière une validation hardware sur slot 250 (§6).
+3. **Aucun envoi câblé pour l'instant.** Le module `write.ts` ne fait que CONSTRUIRE
+   des octets, prouvés byte-exact par `write.test.ts` (encode/decode roundtrip +
+   patch chirurgical qui ne touche pas les parts voisins). La 1re écriture réelle
+   passera par une session de validation sur la machine (le 0x40 charge-t-il bien
+   l'edit buffer ? quel ACK ? comportement en playback ?).
+
+### Consequences
+
+- ✅ Progression à risque nul : toute la sérialisation est vérifiée hors-hardware.
+- ✅ Garde-fou clair : pas d'octet envoyé à la machine sans validation préalable.
+- ⏳ À faire avant de câbler l'envoi : valider sur hardware (slot 250 pour tout test
+  0x11), remplir `MIDI_FINDINGS §6`, puis brancher l'envoi edit-buffer au bouton
+  Recall (étendre le message « 14 params deferred » → appliqués).
+- ➡️ Patch limité aux params « son » (oscType, voiceAssign, filterType, modType,
+  ifxType, egOn, partPriority) ; mute / lastStep / groove / motionSeq restent hors
+  preset (état de séquence, pas de son).
