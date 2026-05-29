@@ -16,3 +16,9 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+
+# Vendor material — drivers / manuals / firmware (not ours to redistribute)
+*.exe
+*.zip
+*.pdf
+electribe_MIDIimp.txt
