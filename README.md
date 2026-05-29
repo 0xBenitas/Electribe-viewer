@@ -2,7 +2,7 @@
 
 Web app companion pour Korg Electribe 2 (EMX2). Vue d'ensemble des 16 parts, bibliothèque de sound presets, catalogue de patterns avec metadata, setlist builder, big XY pad MFX. Local, offline-first, PWA.
 
-> ⚠️ **Statut** : Phase 0 (MIDI Validation) en cours. Pas encore de code.
+> ⚠️ **Statut** : Phase 1 (Foundation) en cours — setup, MIDIClient, détection de connexion.
 
 ## Pourquoi cette app
 
@@ -23,13 +23,13 @@ La machine reste le moteur audio + séquenceur primaire + tactile. L'app est un 
 - **`CLAUDE.md`** — instructions Claude Code
 - **`docs/`** — décisions, findings MIDI, questions ouvertes
 
-## Stack (à venir)
+## Stack
 
-- Vite + React 19 + TypeScript
+- Vite + React 19 + TypeScript (strict)
 - Tailwind CSS v4
+- Zustand (state)
 - Web MIDI API native
-- Dexie.js (IndexedDB)
-- PWA
+- Vitest (unit) — Dexie.js / PWA à venir (Phases ultérieures)
 
 ## Browser support
 
@@ -41,12 +41,37 @@ Pas de support Safari ni Firefox.
 
 Korg Electribe 2 (EMX2 synth, version bleue). Pas l'ESX2 sampler ni les Electribes précédentes.
 
-## Setup (à venir)
+## Setup
 
 ```sh
-# Une fois le code initialisé:
-pnpm install
-pnpm dev
+npm install
+npm run dev        # serveur de dev (localhost, Web MIDI OK)
+```
+
+> Web MIDI exige un contexte sécurisé : `localhost` en dev, HTTPS en prod.
+
+### Scripts
+
+| Script | Rôle |
+|---|---|
+| `npm run dev` | Serveur de dev Vite |
+| `npm run build` | Typecheck + build production |
+| `npm run typecheck` | `tsc -b` sans émettre |
+| `npm test` | Tests unitaires Vitest |
+| `npm run lint` | ESLint |
+| `npm run format` | Prettier |
+
+### Structure
+
+```
+src/
+├── midi/          # MIDIClient, SysEx envelope, Device Inquiry, encodage, ports
+├── store/         # état Zustand (connexion)
+├── components/    # BrowserCheck, PermissionPrompt, ConnectionStatus, MultiTabGuard
+├── lib/           # multi-tab guard (BroadcastChannel)
+└── styles/        # Tailwind + palette
+tests/fixtures/    # captures MIDI réelles (pattern dump)
+tools/             # midi-probe.html (validation Phase 0)
 ```
 
 ## License

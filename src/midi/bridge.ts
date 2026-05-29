@@ -1,0 +1,102 @@
+// Central wiring between the MIDIClient and the Zustand stores.
+// Owns the single MIDIClient + outbound throttler.
+
+import { MIDIClient, type MidiMessage } from './client.ts';
+import { CCThrottler } from './throttle.ts';
+import {
+  CC_MAP,
+  PATTERN_LEVEL_PARAMS,
+  decodeCC,
+  encodeCC,
+  paramForCC,
+  type CCParam,
+} from './ccMap.ts';
+import { getSysExFunction } from './sysex/envelope.ts';
+import { SYSEX_FN } from './sysex/functions.ts';
+import {
+  buildGlobalDumpRequest,
+  decodeGlobalDump,
+  parseGlobalDump,
+} from './sysex/globalDump.ts';
+import {
+  buildCurrentPatternDumpRequest,
+  decodeCurrentPatternDump,
+  parsePatternDump,
+} from './sysex/parser.ts';
+import { patternToParams } from './hydrate.ts';
+import type { ConnectionState } from './types.ts';
+import { useConnectionStore } from '../store/connection.ts';
+import { usePartsStore } from '../store/parts.ts';
+import { useParamsStore } from '../store/params.ts';
+import { useGlobalsStore } from '../store/globals.ts';
+import { useCurrentPatternStore } from '../store/currentPattern.ts';
+
+let client: MIDIClient | null = null;
+const throttler = new CCThrottler((msg) => client?.send(msg));
+
+function onState(state: ConnectionState): void {
+  useConnectionStore.setState({ state });
+  if (state.status === 'connected') {
+    throttler.start();
+    const gc = state.identity.globalChannel;
+    // Knob Mode awareness (spec §6.9) + hydrate the 16 parts (spec §1.2).
+    client?.send(buildGlobalDumpRequest(gc));
+    client?.send(buildCurrentPatternDumpRequest(gc));
+  } else {
+    throttler.reset();
+  }
+}
+
+function onMessage({ channel, data }: MidiMessage): void {
+  if (data[0] === 0xf0) {
+    const fn = getSysExFunction(data);
+    if (fn === SYSEX_FN.GLOBAL_DUMP) {
+      try {
+        const globals = parseGlobalDump(decodeGlobalDump(data));
+        useGlobalsStore.getState().setKnobMode(globals.knobMode);
+      } catch {
+        // ignore malformed dumps
+      }
+    } else if (fn === SYSEX_FN.CURRENT_PATTERN_DUMP) {
+      try {
+        const pattern = parsePatternDump(decodeCurrentPatternDump(data));
+        useCurrentPatternStore.getState().setPattern(pattern);
+        useParamsStore.getState().hydrate(patternToParams(pattern));
+      } catch {
+        // ignore malformed dumps
+      }
+    }
+    return;
+  }
+
+  if ((data[0]! & 0xf0) === 0xb0) {
+    const param = paramForCC(data[1]!);
+    if (!param) return; // ignore Bank Select / unmapped CC (Phase 0 finding)
+    // Pattern-level CCs come on the global channel: never treat them as a part
+    // signal (would corrupt active-part detection + per-part store).
+    if (PATTERN_LEVEL_PARAMS.has(param)) return;
+    // ADR-001: the channel of an incoming part-level CC is the active edit part.
+    usePartsStore.getState().setActivePart(channel);
+    useParamsStore
+      .getState()
+      .applyIncoming(channel, param, decodeCC(CC_MAP[param], data[2]!));
+  }
+}
+
+export function connectMidi(): Promise<void> {
+  if (!client) client = new MIDIClient({ onState, onMessage });
+  return client.connect();
+}
+
+export function selectMidiPort(key: string): Promise<void> {
+  return client?.selectByKey(key) ?? Promise.resolve();
+}
+
+/** Send a mapped CC to the active part's channel (ADR-001). */
+export function sendParam(param: CCParam, value: number): void {
+  const parts = usePartsStore.getState();
+  const partId = parts.activePartId ?? parts.selectedPartId;
+  const spec = CC_MAP[param];
+  useParamsStore.getState().setLocal(partId, param, value);
+  throttler.enqueue(partId - 1, spec.cc, encodeCC(spec, value));
+}
