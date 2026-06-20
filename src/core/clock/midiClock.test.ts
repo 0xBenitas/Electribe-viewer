@@ -34,6 +34,13 @@ describe('MidiClock', () => {
     expect(clock.snapshot().bpm).toBeNull();
   });
 
+  it('treats the first clock after Start as the downbeat (no advance)', () => {
+    const clock = new MidiClock();
+    clock.feed(START, 0);
+    feedTicks(clock, 1, 120, 0);
+    expect(clock.snapshot()).toMatchObject({ running: true, bar: 1, beat: 1, tick: 0 });
+  });
+
   it('advances position only while running', () => {
     const clock = new MidiClock();
     // Free-running clock before Start: BPM tracks, position stays at the downbeat.
@@ -41,8 +48,9 @@ describe('MidiClock', () => {
     expect(clock.snapshot()).toMatchObject({ running: false, bar: 1, beat: 1, tick: 0 });
 
     clock.feed(START, 1000);
-    const after = feedTicks(clock, PPQN, 120, 1000);
-    expect(clock.snapshot()).toMatchObject({ running: true, bar: 1, beat: 2 });
+    // 1 downbeat tick + PPQN advances → start of beat 2 (tick = PPQN).
+    const after = feedTicks(clock, PPQN + 1, 120, 1000);
+    expect(clock.snapshot()).toMatchObject({ running: true, bar: 1, beat: 2, tick: PPQN });
     expect(after).toBeGreaterThan(1000);
   });
 
@@ -58,7 +66,8 @@ describe('MidiClock', () => {
   it('freezes position on Stop and resumes on Continue', () => {
     const clock = new MidiClock();
     clock.feed(START, 0);
-    let ts = feedTicks(clock, PPQN * 2, 120, 0); // bar 1, beat 3
+    // 1 downbeat tick + 2*PPQN advances → start of beat 3.
+    let ts = feedTicks(clock, PPQN * 2 + 1, 120, 0);
     clock.feed(STOP, ts);
     const frozen = clock.snapshot();
     expect(frozen).toMatchObject({ running: false, beat: 3 });
@@ -68,7 +77,8 @@ describe('MidiClock', () => {
     expect(clock.snapshot().beat).toBe(3);
 
     clock.feed(CONTINUE, ts);
-    feedTicks(clock, PPQN, 120, ts);
+    // 1 resume tick (no advance) + PPQN advances → start of beat 4.
+    feedTicks(clock, PPQN + 1, 120, ts);
     expect(clock.snapshot()).toMatchObject({ running: true, beat: 4 });
   });
 
@@ -96,6 +106,17 @@ describe('MidiClock', () => {
     ts += 5000;
     feedTicks(clock, 48, 90, ts);
     expect(clock.snapshot().bpm).toBeCloseTo(90, 1);
+  });
+
+  it('keeps the BPM window through a coincident timestamp', () => {
+    const clock = new MidiClock();
+    clock.feed(START, 0);
+    const end = feedTicks(clock, 24, 120, 0);
+    expect(clock.snapshot().bpm).toBeCloseTo(120, 1);
+    // Two ticks sharing one timestamp (coarse Web MIDI clock) must not blank BPM.
+    clock.feed(CLOCK, end);
+    clock.feed(CLOCK, end);
+    expect(clock.snapshot().bpm).toBeCloseTo(120, 1);
   });
 
   it('ignores unrelated messages (notes, CC, SysEx)', () => {

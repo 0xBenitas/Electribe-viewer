@@ -40,6 +40,8 @@ export class MidiClock {
   private lastTickTs: number | null = null;
   private positionTicks = 0;
   private running = false;
+  /** The next tick marks the current position (downbeat on Start) — see onTick. */
+  private pendingStart = false;
 
   constructor(opts: MidiClockOptions = {}) {
     this.beatsPerBar = opts.timeSignature?.beatsPerBar ?? 4;
@@ -59,9 +61,11 @@ export class MidiClock {
         // Start always rewinds to the downbeat (bar 1, beat 1).
         this.positionTicks = 0;
         this.running = true;
+        this.pendingStart = true;
         break;
       case STATUS.CONTINUE:
         this.running = true;
+        this.pendingStart = true;
         break;
       case STATUS.STOP:
         this.running = false;
@@ -78,16 +82,26 @@ export class MidiClock {
   }
 
   private onTick(ts: number): void {
+    if (this.running && this.pendingStart) {
+      // First clock after Start/Continue: per the MIDI spec it marks the current
+      // position (the downbeat on Start), it does not advance. Also establishes a
+      // fresh timing reference so the pre-start gap never seeds the BPM estimate.
+      this.pendingStart = false;
+      this.lastTickTs = ts;
+      return;
+    }
+
     if (this.lastTickTs !== null) {
       const delta = ts - this.lastTickTs;
-      if (delta <= 0 || delta > this.staleAfterMs) {
-        // Clock lost, or timestamps went backwards: restart the estimate so a
-        // huge gap never pollutes the median.
+      if (delta > this.staleAfterMs) {
+        // Clock lost: restart the estimate so a huge gap never pollutes the median.
         this.intervals = [];
-      } else {
+      } else if (delta > 0) {
         this.intervals.push(delta);
         if (this.intervals.length > this.window) this.intervals.shift();
       }
+      // delta <= 0 (coincident or backwards timestamps): skip this sample but keep
+      // the window — a single timestamp collision must not blank the BPM readout.
     }
     this.lastTickTs = ts;
     if (this.running) this.positionTicks += 1;
@@ -119,5 +133,6 @@ export class MidiClock {
     this.lastTickTs = null;
     this.positionTicks = 0;
     this.running = false;
+    this.pendingStart = false;
   }
 }

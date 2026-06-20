@@ -5,6 +5,7 @@
 // the live stores — the wrapper that lets components migrate to the read-model
 // while MIDI keeps flowing exactly as before.
 
+import { useMemo } from 'react';
 import type { ConnectionState } from '../midi/types.ts';
 import type { ParsedPattern } from '../midi/sysex/parser.ts';
 import type { PartMeta } from '../store/parts.ts';
@@ -54,7 +55,9 @@ export function buildLocalMachine(input: LocalMachineInput): Machine {
     id: 'local',
     label: input.label ?? 'Ma machine',
     model: profile?.identity.model ?? 'Machine inconnue',
-    profileId: input.profileId,
+    // Keep profileId and model consistent: drop an id we can't resolve so the
+    // broadcast snapshot never claims a profile its model string contradicts.
+    profileId: profile?.id ?? null,
     editable: true,
     online: input.connectionStatus === 'connected',
     knobMode: input.knobMode,
@@ -82,17 +85,32 @@ export function useLocalMachine(): Machine {
   const paramsByPart = useParamsStore((s) => s.byPart);
   const knobMode = useGlobalsStore((s) => s.knobMode);
 
-  return buildLocalMachine({
-    connectionStatus,
-    // Single-device today; resolved from the connected identity in a later phase.
-    profileId: 'korg-electribe-2',
-    knobMode,
-    partsMeta,
-    pattern,
-    paramsByPart,
-    activePartId,
-    selectedPartId,
-  });
+  // Memoise so the Machine keeps a stable identity while its store inputs are
+  // unchanged — store slices are referentially stable between unrelated updates,
+  // letting memoised panel children skip re-rendering on the hot CC stream.
+  return useMemo(
+    () =>
+      buildLocalMachine({
+        connectionStatus,
+        // Single-device today; resolved from the connected identity in a later phase.
+        profileId: 'korg-electribe-2',
+        knobMode,
+        partsMeta,
+        pattern,
+        paramsByPart,
+        activePartId,
+        selectedPartId,
+      }),
+    [
+      connectionStatus,
+      knobMode,
+      partsMeta,
+      pattern,
+      paramsByPart,
+      activePartId,
+      selectedPartId,
+    ],
+  );
 }
 
 /**

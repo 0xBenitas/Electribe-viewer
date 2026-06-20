@@ -46,10 +46,15 @@ export interface DeviceSnapshot {
   updatedAt: number;
 }
 
-/** Drop frames that arrive out of order (fan-out can reorder). */
+/**
+ * Accept a snapshot unless it is strictly older than the one we hold. Delivery
+ * over a single WebSocket is TCP-ordered, so this mainly guards against replays;
+ * `>=` keeps a same-millisecond follow-up frame (two states emitted within one
+ * ms) instead of dropping it.
+ */
 export function isNewerSnapshot(
   incoming: DeviceSnapshot,
   current: DeviceSnapshot | undefined,
 ): boolean {
-  return !current || incoming.updatedAt > current.updatedAt;
+  return !current || incoming.updatedAt >= current.updatedAt;
 }

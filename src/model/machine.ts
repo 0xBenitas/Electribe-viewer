@@ -6,6 +6,7 @@
 // editable) and never read global stores directly. This is the merge keystone.
 
 import type { CCParam } from '../midi/ccMap.ts';
+import type { PatternInfoSnapshot } from '../core/session/snapshot.ts';
 
 export type ParamValues = Partial<Record<CCParam, number>>;
 
@@ -27,13 +28,8 @@ export interface MachinePart {
   params: ParamValues;
 }
 
-export interface MachinePatternInfo {
-  name: string;
-  tempo: number;
-  beat: number;
-  length: number;
-  key: number;
-}
+/** Pattern header shown in the cockpit — identical to the wire shape. */
+export type MachinePatternInfo = PatternInfoSnapshot;
 
 export interface Machine {
   /** "local" for own machine, else the peer id. */

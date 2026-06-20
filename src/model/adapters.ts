@@ -50,7 +50,8 @@ export function snapshotToMachine(
     filterType: p.filterType,
     ifxType: p.ifxType,
     lastStep: p.lastStep,
-    params: p.params as ParamValues,
+    // Copy: the read-model must not alias the session store's snapshot object.
+    params: { ...p.params } as ParamValues,
   }));
 
   return {

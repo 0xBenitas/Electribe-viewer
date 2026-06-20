@@ -7,25 +7,20 @@ import {
   isNewerSnapshot,
   type DeviceSnapshot,
 } from '../core/session/snapshot.ts';
-import type { PeerInfo, TransportTick } from '../core/session/protocol.ts';
-
-export interface RemotePeer {
-  id: string;
-  info: PeerInfo;
-  /** The host owns the shared BPM (§5). */
-  isHost: boolean;
-  /** Last replicated machine state, if any. */
-  snapshot?: DeviceSnapshot;
-}
+import type {
+  PeerInfo,
+  PeerState,
+  TransportTick,
+} from '../core/session/protocol.ts';
 
 interface SessionStore {
   self: { id: string; info: PeerInfo } | null;
-  peers: Record<string, RemotePeer>;
+  peers: Record<string, PeerState>;
   /** Host's shared bar/beat/bpm, or null when no session/host. */
   transport: TransportTick | null;
 
   setSelf: (id: string, info: PeerInfo) => void;
-  addPeer: (peer: RemotePeer) => void;
+  addPeer: (peer: PeerState) => void;
   removePeer: (id: string) => void;
   /** Apply a peer's snapshot, dropping stale (out-of-order) frames. */
   applySnapshot: (peerId: string, snapshot: DeviceSnapshot) => void;
@@ -53,8 +48,8 @@ export const useSessionStore = create<SessionStore>((set) => ({
   applySnapshot: (peerId, snapshot) =>
     set((s) => {
       const peer = s.peers[peerId];
-      if (!peer || !isNewerSnapshot(snapshot, peer.snapshot)) return {};
-      return { peers: { ...s.peers, [peerId]: { ...peer, snapshot } } };
+      if (!peer || !isNewerSnapshot(snapshot, peer.device)) return {};
+      return { peers: { ...s.peers, [peerId]: { ...peer, device: snapshot } } };
     }),
 
   setTransport: (transport) => set({ transport }),
