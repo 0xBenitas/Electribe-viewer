@@ -5,25 +5,35 @@
 // machine into a DeviceSnapshot and broadcasts it; a remote peer's machine is
 // just a snapshot fed into the SAME UI components. Replication is read-only in
 // v1 (you see your friends' machines; you only drive your own).
+//
+// It carries device FACTS only — no local UI state (selection, custom names,
+// colours). Those are re-derived on the receiving side.
 
 export interface PartSnapshot {
   /** 1-based part/track index. */
   index: number;
-  /** Display name (custom name, else oscillator/sample name). */
-  name?: string;
-  /** Resolved oscillator/sample name, if known. */
-  oscName?: string;
-  /** Raw oscillator/sample value (reference). */
-  oscRaw?: number;
-  muted?: boolean;
-  /** Palette colour for the tile. */
-  color?: string;
-  /** ccParam name -> current value (app-space, decoded). */
+  muted: boolean;
+  /** Raw oscillator/sample value, or null if unknown. */
+  oscType: number | null;
+  /** Descriptive "sound" fields for the detail view (null if unknown). */
+  voiceAssign: number | null;
+  filterType: number | null;
+  ifxType: number | null;
+  lastStep: number | null;
+  /** CC-mirrored realtime params (app-space, decoded), keyed by ccParam name. */
   params: Record<string, number>;
 }
 
+export interface PatternInfoSnapshot {
+  name: string;
+  tempo: number;
+  beat: number;
+  length: number;
+  key: number;
+}
+
 export interface DeviceSnapshot {
-  /** Profile id this machine resolved to ("korg-electribe-2"), or null if unknown. */
+  /** Profile id this machine resolved to ("korg-electribe-2"), or null. */
   profileId: string | null;
   /** Display model string. */
   model: string;
@@ -31,13 +41,12 @@ export interface DeviceSnapshot {
   /** Currently edited part (1-based), or null if undetermined. */
   activePart: number | null;
   parts: PartSnapshot[];
-  /** Pattern-level params not tied to a part (e.g. Master FX XY). */
-  patternParams?: Record<string, number>;
+  pattern: PatternInfoSnapshot | null;
   /** Sender clock, ms epoch — used to drop stale frames. */
   updatedAt: number;
 }
 
-/** Drop frames that arrive out of order (UDP-like reordering over fan-out). */
+/** Drop frames that arrive out of order (fan-out can reorder). */
 export function isNewerSnapshot(
   incoming: DeviceSnapshot,
   current: DeviceSnapshot | undefined,
