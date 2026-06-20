@@ -187,3 +187,80 @@ PH/PL du slot reste « à valider » (candidat probable 250 → `01 79`).
 - ➡️ Patch limité aux params « son » (oscType, voiceAssign, filterType, modType,
   ifxType, egOn, partPriority) ; mute / lastStep / groove / motionSeq restent hors
   preset (état de séquence, pas de son).
+
+---
+
+## ADR-005: Fusion EMX.PILOT × ENSEMBLE — un seul produit, le viewer comme panneau par-machine
+
+Date: 2026-06-20
+Status: Accepted
+
+### Context
+
+Deux specs coexistaient : **EMX.PILOT** (éditeur mono-machine, local, offline pour
+la Korg Electribe 2 — ce repo) et **ENSEMBLE** (`docs/` externe : cockpit de jam
+multijoueur à distance au-dessus de NINJAM). Décision produit de Bastou : ne pas
+maintenir deux apps. ENSEMBLE doit **englober** le viewer. Objectif final : on va
+sur ENSEMBLE même pour jouer/éditer seul, et EMX.PILOT disparaît en tant qu'app
+séparée. En session, chacun **voit la machine des autres** (réplication
+read-only) ; chacun ne **pilote que la sienne**.
+
+Tension à arbitrer : « pas de bricolage — s'il faut reconstruire, on reconstruit »,
+mais « faire évoluer ce repo » (historique + cœur MIDI gardés).
+
+### Decision
+
+1. **Un seul produit, ce repo.** On fait évoluer le repo existant vers ENSEMBLE
+   (historique conservé). Le code éditeur d'EMX.PILOT n'est pas jeté : il devient
+   le **panneau par-machine** d'ENSEMBLE. Jouer/éditer seul = une session à un
+   joueur.
+
+2. **Le joint de fusion = l'état device, pas l'UI.** L'archi existante
+   (`bridge.ts` → stores Zustand → composants) sépare déjà MIDI et UI. On exploite
+   ce joint : une machine locale est pilotée par Web MIDI ; la machine d'un pote
+   est un `DeviceSnapshot` venu du réseau, injecté dans **les mêmes composants**.
+   `src/core/session/snapshot.ts` définit ce contrat.
+
+3. **Réplication read-only en v1.** On diffuse l'état des machines (parts, sons,
+   params, part actif) ; le contrôle distant des machines d'autrui est explicitement
+   reporté (conflits, latence, autorisations). Voir `protocol.ts`.
+
+4. **Stack : on garde Vite + un serveur WS autonome — PAS Next.js.** La spec
+   ENSEMBLE imposait Next ; on la révise. Web MIDI / Web USB sont strictement
+   navigateur (impossibles en SSR), donc Next n'apporte aucune valeur ici et serait
+   une couche d'impédance. Le choix *propre* (cohérent avec « pas de bricolage »)
+   est un SPA client (stack EMX.PILOT rodée) + un process Node WebSocket séparé pour
+   présence / BPM / réplication / cues.
+
+5. **Transport audio abstrait (§8), backend NINJAM natif en v1.**
+   `src/core/transport/` : interface `AudioTransport` + `NinjamTransport`. Le
+   navigateur **ne porte jamais l'audio** en v1 (client natif Jamtaba/Reaper à
+   côté). Jamulus/WebRTC = backends futurs sans toucher au cockpit.
+
+6. **Device Profiles = JSON versionnés** sous `/device-profiles` (un fichier par
+   machine), chargés par `src/core/profiles/`. Le savoir Electribe (CC map,
+   identité SysEx, 16 parts) est transcrit dans `korg-electribe-2.json` (status
+   `verified`). `elektron-model-samples.json` livré en `draft` (non validé hardware).
+
+### Consequences
+
+- ✅ Le travail MIDI testé (`ports.ts`, `deviceInquiry.ts`, `client.ts`, SysEx,
+  CC map) est réutilisé tel quel ; il alimente directement l'auto-détection §4.
+- ✅ « Jouer seul sur ENSEMBLE » tombe gratuitement (session de un).
+- ✅ Le différenciateur (cues calés à la mesure) a son contrat dès maintenant
+  (`Cue`, `landAtBar`) : le décalage d'une mesure devient le médium du signal.
+- ⚠️ Reste à construire (neuf, hors repo aujourd'hui) : lecture clock MIDI →
+  BPM + position dans la mesure ; le serveur WS ; le câblage stores ↔ snapshot ;
+  l'orchestration NINJAM réelle ; l'UI cockpit.
+- ➡️ Étape structurelle suivante : passer en monorepo (`apps/web`, `apps/ws-server`,
+  `packages/midi`, `device-profiles/`) et renommer EMX.PILOT → ENSEMBLE dans
+  README/manifeste. Faite séparément pour ne pas déstabiliser l'app qui marche.
+- ➡️ `src/core/` accueille le domaine agnostique du produit (profiles, transport,
+  session) ; `src/midi/` reste l'adaptateur Web MIDI ; `src/store|components/`
+  l'éditeur, bientôt alimentable par snapshot réseau.
+
+### Livré par ce commit (squelette, non câblé)
+
+`src/core/profiles/` (types + registry + 2 profils JSON + tests),
+`src/core/transport/` (AudioTransport + NinjamTransport),
+`src/core/session/` (protocole WS + DeviceSnapshot). Typecheck + lint + 40 tests OK.

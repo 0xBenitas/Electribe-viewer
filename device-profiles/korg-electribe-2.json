@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "id": "korg-electribe-2",
+  "status": "verified",
+  "identity": {
+    "manufacturer": "Korg",
+    "model": "Electribe 2 (EMX, synth)",
+    "variants": ["Hacktribe firmware"],
+    "webMidiPortNames": ["electribe"],
+    "sysex": {
+      "manufacturerId": [66],
+      "familyId": [35, 1]
+    }
+  },
+  "midi": {
+    "channelModel": "global",
+    "sysex": true,
+    "ccParams": [
+      { "name": "ampLevel", "cc": 7 },
+      { "name": "ampPan", "cc": 10 },
+      { "name": "filterReso", "cc": 71 },
+      { "name": "egDecay", "cc": 72 },
+      { "name": "egAttack", "cc": 73 },
+      { "name": "filterCutoff", "cc": 74 },
+      { "name": "oscPitch", "cc": 80 },
+      { "name": "oscGlide", "cc": 81 },
+      { "name": "oscEdit", "cc": 82 },
+      { "name": "filterEgInt", "cc": 83 },
+      { "name": "modDepth", "cc": 85 },
+      { "name": "modSpeed", "cc": 86 },
+      { "name": "ifxEdit", "cc": 87 },
+      { "name": "masterFxX", "cc": 102 },
+      { "name": "masterFxY", "cc": 103 },
+      { "name": "ifxOnOff", "cc": 104 },
+      { "name": "mfxSendOnOff", "cc": 105 },
+      { "name": "mfxOnOff", "cc": 106 }
+    ]
+  },
+  "clock": {
+    "canBeMaster": true,
+    "canBeSlave": true,
+    "transport": ["start", "stop", "continue"],
+    "songPosition": false
+  },
+  "tracks": {
+    "count": 16,
+    "label": "parts"
+  },
+  "audio": {
+    "outputs": [{ "name": "Main L/R", "channels": "stereo" }]
+  },
+  "telemetry": {
+    "reportsActivePart": true,
+    "reportsPatternDump": true,
+    "reportsGlobalDump": true,
+    "reportsCcTweaks": true
+  }
+}
