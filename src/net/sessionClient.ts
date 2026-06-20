@@ -71,7 +71,11 @@ export class SessionClient {
   }
 
   send(msg: ClientMessage): void {
-    this.socket?.send(JSON.stringify(msg));
+    try {
+      this.socket?.send(JSON.stringify(msg));
+    } catch {
+      // Socket not OPEN yet (CONNECTING) or already closing: drop the frame.
+    }
   }
 
   sendDevice(snapshot: DeviceSnapshot): void {

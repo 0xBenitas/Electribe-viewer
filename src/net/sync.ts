@@ -3,6 +3,7 @@
 
 import { useMemo } from 'react';
 import { useSessionStore } from '../store/session.ts';
+import { useCueStore } from '../store/cues.ts';
 import { snapshotToMachine } from '../model/adapters.ts';
 import type { ServerMessage } from '../core/session/protocol.ts';
 import type { Machine } from '../model/machine.ts';
@@ -33,10 +34,12 @@ export function dispatchServerMessage(msg: ServerMessage): void {
       store.applySnapshot(msg.peer, msg.snapshot);
       break;
     case 'transport':
+      // The server gates transport to the host; trust its `host` as authoritative.
+      store.setHostId(msg.host);
       store.setTransport({ bpm: msg.bpm, bar: msg.bar, beat: msg.beat });
       break;
     case 'cue':
-      // Phase 3: surface the cue in the cockpit.
+      useCueStore.getState().add({ cue: msg.cue, peer: msg.peer });
       break;
     case 'pong':
       // Latency estimation lands with the transport UI.

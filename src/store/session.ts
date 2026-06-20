@@ -21,6 +21,8 @@ interface SessionStore {
   hostId: PeerId | null;
   /** Host's shared bar/beat/bpm, or null when no session/host. */
   transport: TransportTick | null;
+  /** When `transport` was last updated (ms), for staleness; null if never. */
+  transportAt: number | null;
 
   setSelf: (id: string, info: PeerInfo) => void;
   setHostId: (id: PeerId | null) => void;
@@ -37,6 +39,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
   peers: {},
   hostId: null,
   transport: null,
+  transportAt: null,
 
   setSelf: (id, info) => set({ self: { id, info } }),
 
@@ -62,8 +65,15 @@ export const useSessionStore = create<SessionStore>((set) => ({
       return { peers: { ...s.peers, [peerId]: { ...peer, device: snapshot } } };
     }),
 
-  setTransport: (transport) => set({ transport }),
+  setTransport: (transport) =>
+    set({ transport, transportAt: transport === null ? null : Date.now() }),
 
   reset: () =>
-    set({ self: null, peers: {}, hostId: null, transport: null }),
+    set({
+      self: null,
+      peers: {},
+      hostId: null,
+      transport: null,
+      transportAt: null,
+    }),
 }));

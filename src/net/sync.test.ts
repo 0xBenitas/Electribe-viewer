@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { dispatchServerMessage } from './sync.ts';
 import { useSessionStore } from '../store/session.ts';
+import { useCueStore } from '../store/cues.ts';
+import { buildCue } from '../model/cues.ts';
 import type { DeviceSnapshot } from '../core/session/snapshot.ts';
 import type { PeerState } from '../core/session/protocol.ts';
 
@@ -20,7 +22,10 @@ const peer = (id: string, isHost = false): PeerState => ({
 });
 
 describe('dispatchServerMessage', () => {
-  beforeEach(() => useSessionStore.getState().reset());
+  beforeEach(() => {
+    useSessionStore.getState().reset();
+    useCueStore.getState().clear();
+  });
 
   it('welcome sets self id (keeping our name) and seeds existing peers', () => {
     useSessionStore.getState().setSelf('', { name: 'Bastou' });
@@ -73,5 +78,12 @@ describe('dispatchServerMessage', () => {
 
     dispatchServerMessage({ t: 'peer-leave', peer: 'p1' });
     expect(useSessionStore.getState().peers.p1).toBeUndefined();
+  });
+
+  it('routes a cue into the cue store with its sender', () => {
+    const cue = buildCue('drop', 7, { id: 'c1', now: 0 });
+    dispatchServerMessage({ t: 'cue', peer: 'p2', cue });
+    const stored = useCueStore.getState().cues;
+    expect(stored).toEqual([{ cue, peer: 'p2' }]);
   });
 });

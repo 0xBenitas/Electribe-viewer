@@ -5,9 +5,11 @@
 import { useEffect, useRef } from 'react';
 import { SessionClient } from './sessionClient.ts';
 import { dispatchServerMessage } from './sync.ts';
+import { setActiveClient } from './sessionLink.ts';
 import { machineToSnapshot } from '../model/adapters.ts';
 import { clockSnapshot } from '../midi/bridge.ts';
 import { useSessionStore } from '../store/session.ts';
+import { useCueStore } from '../store/cues.ts';
 import type { Machine } from '../model/machine.ts';
 
 export interface SessionConnectConfig {
@@ -20,11 +22,6 @@ export interface SessionConnectConfig {
 const SNAPSHOT_INTERVAL_MS = 150;
 /** How often the host broadcasts the shared transport (ms). */
 const TRANSPORT_INTERVAL_MS = 200;
-
-/** A stable key over the device-facing fields, to skip unchanged broadcasts. */
-function deviceKey(machine: Machine): string {
-  return JSON.stringify([machine.activePartId, machine.parts, machine.pattern]);
-}
 
 export function useSessionSync(
   config: SessionConnectConfig | null,
@@ -44,30 +41,36 @@ export function useSessionSync(
       onMessage: dispatchServerMessage,
     });
     client.connect();
+    setActiveClient(client);
 
     let lastKey = '';
     const deviceTimer = setInterval(() => {
-      const machine = machineRef.current;
-      const key = deviceKey(machine);
-      if (key === lastKey) return; // nothing changed → don't flood the relay
+      // Key off the actual wire payload (minus its timestamp) so UI-only changes
+      // (custom name/colour) never trigger an identical broadcast.
+      const snapshot = machineToSnapshot(machineRef.current, 0);
+      const key = JSON.stringify(snapshot);
+      if (key === lastKey) return; // nothing on the wire changed
       lastKey = key;
-      client.sendDevice(machineToSnapshot(machine, Date.now()));
+      client.sendDevice({ ...snapshot, updatedAt: Date.now() });
     }, SNAPSHOT_INTERVAL_MS);
 
     // Only the host broadcasts the shared tempo, and only while the clock runs.
+    // Bar/beat are valid before BPM warms up, so don't gate on bpm.
     const transportTimer = setInterval(() => {
       const { self, hostId } = useSessionStore.getState();
       if (!self || self.id !== hostId) return;
       const c = clockSnapshot(performance.now());
-      if (!c.running || c.bpm === null) return;
-      client.sendTransport({ bpm: c.bpm, bar: c.bar, beat: c.beat });
+      if (!c.running) return;
+      client.sendTransport({ bpm: c.bpm ?? 0, bar: c.bar, beat: c.beat });
     }, TRANSPORT_INTERVAL_MS);
 
     return () => {
       clearInterval(deviceTimer);
       clearInterval(transportTimer);
+      setActiveClient(null);
       client.disconnect();
       useSessionStore.getState().reset();
+      useCueStore.getState().clear();
     };
   }, [config]);
 }

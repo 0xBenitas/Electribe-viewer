@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useConnectionStore } from './store/connection.ts';
 import { connectMidi } from './midi/bridge.ts';
 import { useLocalMachine, localMachineActions } from './model/localMachine.ts';
+import { useClockDriver } from './model/useClock.ts';
 import {
   useSessionSync,
   type SessionConnectConfig,
@@ -13,6 +14,7 @@ import { ConnectionStatus } from './components/ConnectionStatus.tsx';
 import { MultiTabGuard } from './components/MultiTabGuard.tsx';
 import { SessionBar } from './components/SessionBar.tsx';
 import { TransportBar } from './components/TransportBar.tsx';
+import { CueDeck } from './components/CueDeck.tsx';
 import { MachinePanel } from './components/MachinePanel.tsx';
 import { PresetLibrary } from './components/PresetLibrary.tsx';
 import { SysexLab } from './components/SysexLab.tsx';
@@ -23,6 +25,7 @@ export function App() {
     useState<SessionConnectConfig | null>(null);
 
   const localMachine = useLocalMachine();
+  useClockDriver();
   useSessionSync(sessionConfig, localMachine);
   const peerMachines = usePeerMachines();
 
@@ -50,6 +53,7 @@ export function App() {
           onDisconnect={() => setSessionConfig(null)}
         />
         <TransportBar />
+        <CueDeck />
         <MachinePanel machine={localMachine} actions={localMachineActions} />
         {peerMachines.map((machine) => (
           <MachinePanel key={machine.id} machine={machine} />

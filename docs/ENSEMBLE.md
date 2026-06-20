@@ -57,7 +57,7 @@ réseau WS ──► DeviceSnapshot ─┘   (même UI rend local OU distant)
 | 2 | Device Profiles : format + détection + UI capability-driven + setup machine inconnue | 🟨 socle posé (types, registry, 2 profils, tests) |
 | 2b | **Fusion viewer** : read-model `Machine` + adaptateurs snapshot + composants pilotés par le read-model (local ou distant) | 🟩 fait (`src/model`, composants migrés) |
 | 2c | Diffusion `DeviceSnapshot` (hôte→pairs) + rendu des machines des pairs | 🟩 fait (`useSessionSync`, `usePeerMachines`) |
-| 3 | Cues non-verbaux calés à la mesure (le différenciateur) | 🟨 contrat posé (`Cue`, `landAtBar`) |
+| 3 | Cues non-verbaux calés à la mesure (le différenciateur) | 🟩 fait (`CueDeck`, store cues, relais serveur) |
 | 4 | (R&D, optionnel) Audio dans le navigateur — hors chemin critique | ⬜ |
 | — | Étape structurelle : monorepo (`apps/web`, `apps/ws-server`, `packages/midi`) + rename ENSEMBLE | ⬜ à faire |
 
@@ -76,5 +76,12 @@ Process Node autonome (`server/`), relais fan-out pur :
 ## Ce qui reste explicitement à construire (neuf)
 
 - L'orchestration NINJAM réelle (lancement/lien client natif) + Phase 0 infra.
+- Setup guidé d'une machine inconnue → génération d'un nouveau Device Profile.
+- Étape structurelle : monorepo + rename ENSEMBLE.
+
+> Limite connue des cues : un pair (non-hôte) calcule `landAtBar` depuis sa mesure
+> partagée relayée (~200 ms de retard), donc l'atterrissage peut différer d'±1
+> mesure de la vue de l'hôte. Acceptable (signal volontairement « gros grain » à
+> la mesure) ; piste future = marge adaptative quand on est en fin de mesure.
 - Les **cues** non-verbaux (UI + émission `sendCue`, le contrat existe déjà).
 - UI cockpit : position dans la mesure (phare visuel) alimentée par le transport.
