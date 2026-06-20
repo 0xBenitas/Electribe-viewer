@@ -35,7 +35,10 @@ export const useSessionStore = create<SessionStore>((set) => ({
 
   setSelf: (id, info) => set({ self: { id, info } }),
 
-  addPeer: (peer) => set((s) => ({ peers: { ...s.peers, [peer.id]: peer } })),
+  // Upsert: a peer-join can re-announce an existing peer (e.g. host promotion);
+  // merge so we don't drop a device snapshot we already hold.
+  addPeer: (peer) =>
+    set((s) => ({ peers: { ...s.peers, [peer.id]: { ...s.peers[peer.id], ...peer } } })),
 
   removePeer: (id) =>
     set((s) => {

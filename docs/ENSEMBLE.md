@@ -52,19 +52,31 @@ réseau WS ──► DeviceSnapshot ─┘   (même UI rend local OU distant)
 |---|---|---|
 | 0 | Serveur NINJAM Docker (Hetzner/Caddy) + jam via Jamtaba | ⬜ à faire |
 | 1a | Lecture clock MIDI → BPM + position mesure (module pur testé) | 🟩 fait (`src/core/clock`) |
-| 1b | Serveur WS + présence + BPM partagée (câblage du module clock) | ⬜ à faire |
+| 1b | Serveur WS (relais présence/BPM/snapshots/cues) + client + présence | 🟩 fait (`server/`, `src/net/`) |
+| 1c | Câbler la clock live (MIDI in → `MidiClock`) et faire diffuser le transport par l'hôte | ⬜ à faire |
 | 2 | Device Profiles : format + détection + UI capability-driven + setup machine inconnue | 🟨 socle posé (types, registry, 2 profils, tests) |
 | 2b | **Fusion viewer** : read-model `Machine` + adaptateurs snapshot + composants pilotés par le read-model (local ou distant) | 🟩 fait (`src/model`, composants migrés) |
-| 2c | Câbler `useLocalMachine` → diffusion `DeviceSnapshot` sur le WS, et rendre les machines des pairs depuis `useSessionStore` | ⬜ à faire |
+| 2c | Diffusion `DeviceSnapshot` (hôte→pairs) + rendu des machines des pairs | 🟩 fait (`useSessionSync`, `usePeerMachines`) |
 | 3 | Cues non-verbaux calés à la mesure (le différenciateur) | 🟨 contrat posé (`Cue`, `landAtBar`) |
 | 4 | (R&D, optionnel) Audio dans le navigateur — hors chemin critique | ⬜ |
 | — | Étape structurelle : monorepo (`apps/web`, `apps/ws-server`, `packages/midi`) + rename ENSEMBLE | ⬜ à faire |
 
+## Serveur de session
+
+Process Node autonome (`server/`), relais fan-out pur :
+
+- `server/hub.ts` — logique de salle **pure et testée** (présence, hôte = source
+  BPM, réplication device, cues, promotion d'hôte au départ).
+- `server/index.ts` — adaptateur `ws` mince (mappe sockets ↔ peer ids).
+- Lancement : `npm run server` (dev, tsx watch) / `npm run server:start`.
+- Client navigateur : `src/net/sessionClient.ts` (transport), `src/net/sync.ts`
+  (inbound → store + `usePeerMachines`), `src/net/useSessionSync.ts` (cycle de
+  vie + diffusion du snapshot local, throttlée hors du flux CC).
+
 ## Ce qui reste explicitement à construire (neuf)
 
-- Lecture temps-réel de la clock MIDI (`0xF8` / Start-Stop / SPP) → BPM + mesure.
-  **Rien dans le repo aujourd'hui** : EMX.PILOT lit du SysEx, pas l'horloge.
-- Le serveur WebSocket (process Node) : fan-out présence / BPM / snapshots / cues.
-- Le câblage `bridge.ts` → sérialisation `DeviceSnapshot` → diffusion, et le sens
-  inverse (snapshot réseau → store « peer » → composants).
-- L'orchestration NINJAM réelle + l'UI cockpit (position mesure, présence, cues).
+- **Clock live** : feeder `MidiClock` depuis le `bridge` (octets `0xF8`/transport)
+  et exposer un store clock ; côté hôte, boucle `clock → sendTransport`.
+- L'orchestration NINJAM réelle (lancement/lien client natif) + Phase 0 infra.
+- Les **cues** non-verbaux (UI + émission `sendCue`, le contrat existe déjà).
+- UI cockpit : position dans la mesure (phare visuel) alimentée par le transport.

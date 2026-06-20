@@ -22,7 +22,19 @@ export function MachinePanel({ machine, actions }: MachinePanelProps) {
     machine.parts[0];
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-4 rounded-lg border border-line p-4">
+      <header className="flex items-baseline gap-2">
+        <span
+          className={`size-2 rounded-full ${machine.online ? 'bg-green' : 'bg-line-bright'}`}
+        />
+        <h2 className="text-sm font-bold text-text">{machine.label}</h2>
+        <span className="text-xs text-text-muted">{machine.model}</span>
+        {!machine.editable && (
+          <span className="text-[10px] uppercase tracking-wide text-text-dim">
+            lecture seule
+          </span>
+        )}
+      </header>
       {machine.editable && <KnobModeBadge knobMode={machine.knobMode} />}
       <PatternInfo pattern={machine.pattern} />
       <PartGrid
