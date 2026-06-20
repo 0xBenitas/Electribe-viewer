@@ -12,6 +12,7 @@ import { PermissionPrompt } from './components/PermissionPrompt.tsx';
 import { ConnectionStatus } from './components/ConnectionStatus.tsx';
 import { MultiTabGuard } from './components/MultiTabGuard.tsx';
 import { SessionBar } from './components/SessionBar.tsx';
+import { TransportBar } from './components/TransportBar.tsx';
 import { MachinePanel } from './components/MachinePanel.tsx';
 import { PresetLibrary } from './components/PresetLibrary.tsx';
 import { SysexLab } from './components/SysexLab.tsx';
@@ -48,6 +49,7 @@ export function App() {
           onConnect={setSessionConfig}
           onDisconnect={() => setSessionConfig(null)}
         />
+        <TransportBar />
         <MachinePanel machine={localMachine} actions={localMachineActions} />
         {peerMachines.map((machine) => (
           <MachinePanel key={machine.id} machine={machine} />

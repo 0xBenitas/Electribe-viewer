@@ -6,6 +6,7 @@ import { useEffect, useRef } from 'react';
 import { SessionClient } from './sessionClient.ts';
 import { dispatchServerMessage } from './sync.ts';
 import { machineToSnapshot } from '../model/adapters.ts';
+import { clockSnapshot } from '../midi/bridge.ts';
 import { useSessionStore } from '../store/session.ts';
 import type { Machine } from '../model/machine.ts';
 
@@ -17,6 +18,8 @@ export interface SessionConnectConfig {
 
 /** How often we broadcast our machine state (ms). */
 const SNAPSHOT_INTERVAL_MS = 150;
+/** How often the host broadcasts the shared transport (ms). */
+const TRANSPORT_INTERVAL_MS = 200;
 
 /** A stable key over the device-facing fields, to skip unchanged broadcasts. */
 function deviceKey(machine: Machine): string {
@@ -43,7 +46,7 @@ export function useSessionSync(
     client.connect();
 
     let lastKey = '';
-    const timer = setInterval(() => {
+    const deviceTimer = setInterval(() => {
       const machine = machineRef.current;
       const key = deviceKey(machine);
       if (key === lastKey) return; // nothing changed → don't flood the relay
@@ -51,8 +54,18 @@ export function useSessionSync(
       client.sendDevice(machineToSnapshot(machine, Date.now()));
     }, SNAPSHOT_INTERVAL_MS);
 
+    // Only the host broadcasts the shared tempo, and only while the clock runs.
+    const transportTimer = setInterval(() => {
+      const { self, hostId } = useSessionStore.getState();
+      if (!self || self.id !== hostId) return;
+      const c = clockSnapshot(performance.now());
+      if (!c.running || c.bpm === null) return;
+      client.sendTransport({ bpm: c.bpm, bar: c.bar, beat: c.beat });
+    }, TRANSPORT_INTERVAL_MS);
+
     return () => {
-      clearInterval(timer);
+      clearInterval(deviceTimer);
+      clearInterval(transportTimer);
       client.disconnect();
       useSessionStore.getState().reset();
     };

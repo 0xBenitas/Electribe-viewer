@@ -3,6 +3,8 @@
 
 import { MIDIClient, type MidiMessage } from './client.ts';
 import { CCThrottler } from './throttle.ts';
+import { MidiClock } from '../core/clock/midiClock.ts';
+import type { ClockSnapshot } from '../core/clock/types.ts';
 import {
   CC_MAP,
   PATTERN_LEVEL_PARAMS,
@@ -37,6 +39,17 @@ import { useSysexStore } from '../store/sysex.ts';
 let client: MIDIClient | null = null;
 const throttler = new CCThrottler((msg) => client?.send(msg));
 
+/** Live MIDI clock, fed from realtime messages (Phase 1c). */
+const clock = new MidiClock();
+
+/** Current shared-tempo snapshot (BPM + bar position). */
+export function clockSnapshot(now?: number): ClockSnapshot {
+  return clock.snapshot(now);
+}
+
+/** MIDI realtime + Song Position statuses routed to the clock. */
+const CLOCK_STATUS = new Set([0xf8, 0xfa, 0xfb, 0xfc, 0xf2]);
+
 function onState(state: ConnectionState): void {
   useConnectionStore.setState({ state });
   if (state.status === 'connected') {
@@ -47,10 +60,16 @@ function onState(state: ConnectionState): void {
     client?.send(buildCurrentPatternDumpRequest(gc));
   } else {
     throttler.reset();
+    clock.reset();
   }
 }
 
-function onMessage({ channel, data }: MidiMessage): void {
+function onMessage({ channel, data, timeStamp }: MidiMessage): void {
+  if (CLOCK_STATUS.has(data[0]!)) {
+    clock.feed(data, timeStamp);
+    return;
+  }
+
   if (data[0] === 0xf0) {
     const fn = getSysExFunction(data);
     if (fn === SYSEX_FN.GLOBAL_DUMP) {

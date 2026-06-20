@@ -8,6 +8,7 @@ import {
   type DeviceSnapshot,
 } from '../core/session/snapshot.ts';
 import type {
+  PeerId,
   PeerInfo,
   PeerState,
   TransportTick,
@@ -16,10 +17,13 @@ import type {
 interface SessionStore {
   self: { id: string; info: PeerInfo } | null;
   peers: Record<string, PeerState>;
+  /** Id of the peer that owns the shared BPM (§5), or null if none/unknown. */
+  hostId: PeerId | null;
   /** Host's shared bar/beat/bpm, or null when no session/host. */
   transport: TransportTick | null;
 
   setSelf: (id: string, info: PeerInfo) => void;
+  setHostId: (id: PeerId | null) => void;
   addPeer: (peer: PeerState) => void;
   removePeer: (id: string) => void;
   /** Apply a peer's snapshot, dropping stale (out-of-order) frames. */
@@ -31,9 +35,12 @@ interface SessionStore {
 export const useSessionStore = create<SessionStore>((set) => ({
   self: null,
   peers: {},
+  hostId: null,
   transport: null,
 
   setSelf: (id, info) => set({ self: { id, info } }),
+
+  setHostId: (hostId) => set({ hostId }),
 
   // Upsert: a peer-join can re-announce an existing peer (e.g. host promotion);
   // merge so we don't drop a device snapshot we already hold.
@@ -57,5 +64,6 @@ export const useSessionStore = create<SessionStore>((set) => ({
 
   setTransport: (transport) => set({ transport }),
 
-  reset: () => set({ self: null, peers: {}, transport: null }),
+  reset: () =>
+    set({ self: null, peers: {}, hostId: null, transport: null }),
 }));

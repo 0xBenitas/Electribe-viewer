@@ -41,6 +41,27 @@ describe('dispatchServerMessage', () => {
     expect(p1.device?.activePart).toBe(4); // snapshot preserved
   });
 
+  it('derives host: first joiner is host, else the existing host', () => {
+    // No existing host among peers → we are the host.
+    useSessionStore.getState().setSelf('', { name: 'B' });
+    dispatchServerMessage({ t: 'welcome', self: 'me', peers: [] });
+    expect(useSessionStore.getState().hostId).toBe('me');
+
+    useSessionStore.getState().reset();
+    useSessionStore.getState().setSelf('', { name: 'B' });
+    dispatchServerMessage({ t: 'welcome', self: 'me', peers: [peer('p1', true)] });
+    expect(useSessionStore.getState().hostId).toBe('p1');
+  });
+
+  it('clears host on host departure and adopts a promoted host', () => {
+    useSessionStore.getState().setSelf('', { name: 'B' });
+    dispatchServerMessage({ t: 'welcome', self: 'me', peers: [peer('p1', true)] });
+    dispatchServerMessage({ t: 'peer-leave', peer: 'p1' });
+    expect(useSessionStore.getState().hostId).toBeNull();
+    dispatchServerMessage({ t: 'peer-join', peer: peer('me', true) });
+    expect(useSessionStore.getState().hostId).toBe('me');
+  });
+
   it('routes device, transport, and peer-leave', () => {
     const store = useSessionStore.getState();
     store.addPeer(peer('p1'));

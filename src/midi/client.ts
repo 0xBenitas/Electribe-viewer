@@ -12,6 +12,8 @@ export interface MidiMessage {
   /** Low nibble of the status byte + 1, i.e. the 1-based MIDI channel. */
   channel: number;
   data: Uint8Array;
+  /** Event timestamp (DOMHighResTimeStamp, ms) — same domain as performance.now(). */
+  timeStamp: number;
 }
 
 export interface MIDIClientCallbacks {
@@ -148,7 +150,11 @@ export class MIDIClient {
       }
     }
 
-    this.cb.onMessage?.({ channel: (data[0]! & 0x0f) + 1, data });
+    this.cb.onMessage?.({
+      channel: (data[0]! & 0x0f) + 1,
+      data,
+      timeStamp: e.timeStamp,
+    });
   }
 
   private async rescan(): Promise<void> {

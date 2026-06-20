@@ -53,7 +53,7 @@ réseau WS ──► DeviceSnapshot ─┘   (même UI rend local OU distant)
 | 0 | Serveur NINJAM Docker (Hetzner/Caddy) + jam via Jamtaba | ⬜ à faire |
 | 1a | Lecture clock MIDI → BPM + position mesure (module pur testé) | 🟩 fait (`src/core/clock`) |
 | 1b | Serveur WS (relais présence/BPM/snapshots/cues) + client + présence | 🟩 fait (`server/`, `src/net/`) |
-| 1c | Câbler la clock live (MIDI in → `MidiClock`) et faire diffuser le transport par l'hôte | ⬜ à faire |
+| 1c | Clock live (`bridge` feed `MidiClock`) + diffusion du transport par l'hôte + phare BPM/mesure | 🟩 fait (`useClock`, `TransportBar`) |
 | 2 | Device Profiles : format + détection + UI capability-driven + setup machine inconnue | 🟨 socle posé (types, registry, 2 profils, tests) |
 | 2b | **Fusion viewer** : read-model `Machine` + adaptateurs snapshot + composants pilotés par le read-model (local ou distant) | 🟩 fait (`src/model`, composants migrés) |
 | 2c | Diffusion `DeviceSnapshot` (hôte→pairs) + rendu des machines des pairs | 🟩 fait (`useSessionSync`, `usePeerMachines`) |
@@ -75,8 +75,6 @@ Process Node autonome (`server/`), relais fan-out pur :
 
 ## Ce qui reste explicitement à construire (neuf)
 
-- **Clock live** : feeder `MidiClock` depuis le `bridge` (octets `0xF8`/transport)
-  et exposer un store clock ; côté hôte, boucle `clock → sendTransport`.
 - L'orchestration NINJAM réelle (lancement/lien client natif) + Phase 0 infra.
 - Les **cues** non-verbaux (UI + émission `sendCue`, le contrat existe déjà).
 - UI cockpit : position dans la mesure (phare visuel) alimentée par le transport.
