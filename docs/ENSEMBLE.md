@@ -51,9 +51,11 @@ réseau WS ──► DeviceSnapshot ─┘   (même UI rend local OU distant)
 | Phase | Contenu | État |
 |---|---|---|
 | 0 | Serveur NINJAM Docker (Hetzner/Caddy) + jam via Jamtaba | ⬜ à faire |
-| 1 | Lecture clock MIDI → BPM + position mesure ; serveur WS ; présence ; BPM partagée | ⬜ à faire |
+| 1a | Lecture clock MIDI → BPM + position mesure (module pur testé) | 🟩 fait (`src/core/clock`) |
+| 1b | Serveur WS + présence + BPM partagée (câblage du module clock) | ⬜ à faire |
 | 2 | Device Profiles : format + détection + UI capability-driven + setup machine inconnue | 🟨 socle posé (types, registry, 2 profils, tests) |
-| 2b | **Fusion viewer** : câbler stores ↔ `DeviceSnapshot`, rendre la machine d'un pote dans les composants existants | ⬜ à faire |
+| 2b | **Fusion viewer** : read-model `Machine` + adaptateurs snapshot + composants pilotés par le read-model (local ou distant) | 🟩 fait (`src/model`, composants migrés) |
+| 2c | Câbler `useLocalMachine` → diffusion `DeviceSnapshot` sur le WS, et rendre les machines des pairs depuis `useSessionStore` | ⬜ à faire |
 | 3 | Cues non-verbaux calés à la mesure (le différenciateur) | 🟨 contrat posé (`Cue`, `landAtBar`) |
 | 4 | (R&D, optionnel) Audio dans le navigateur — hors chemin critique | ⬜ |
 | — | Étape structurelle : monorepo (`apps/web`, `apps/ws-server`, `packages/midi`) + rename ENSEMBLE | ⬜ à faire |
