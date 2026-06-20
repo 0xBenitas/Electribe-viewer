@@ -1,7 +1,5 @@
 import { CC_MAP, type CCParam } from '../midi/ccMap.ts';
 import type { CCEncoding } from '../midi/encoding.ts';
-import { sendParam } from '../midi/bridge.ts';
-import { useParamsStore } from '../store/params.ts';
 
 function range(enc: CCEncoding): [number, number] {
   switch (enc) {
@@ -16,18 +14,20 @@ function range(enc: CCEncoding): [number, number] {
 
 interface Props {
   param: CCParam;
-  partId: number;
+  value: number | undefined;
   disabled?: boolean;
+  /** Omitted = read-only (e.g. a remote peer's machine). */
+  onChange?: (param: CCParam, value: number) => void;
 }
 
-export function ParamSlider({ param, partId, disabled = false }: Props) {
+export function ParamSlider({ param, value, disabled = false, onChange }: Props) {
   const spec = CC_MAP[param];
   const [min, max] = range(spec.encoding);
-  const value = useParamsStore((s) => s.byPart[partId]?.[param]);
   const display = value ?? Math.round((min + max) / 2);
+  const locked = disabled || !onChange;
 
   return (
-    <label className={`flex flex-col gap-1 ${disabled ? 'opacity-50' : ''}`}>
+    <label className={`flex flex-col gap-1 ${locked ? 'opacity-50' : ''}`}>
       <div className="flex justify-between text-xs">
         <span className="text-text-dim">{spec.description}</span>
         <span className="text-text">{value ?? '—'}</span>
@@ -37,22 +37,22 @@ export function ParamSlider({ param, partId, disabled = false }: Props) {
         min={min}
         max={max}
         value={display}
-        disabled={disabled}
-        onChange={(e) => sendParam(param, Number(e.target.value))}
+        disabled={locked}
+        onChange={(e) => onChange?.(param, Number(e.target.value))}
         className="accent-blue"
       />
     </label>
   );
 }
 
-export function ParamToggle({ param, partId, disabled = false }: Props) {
+export function ParamToggle({ param, value, disabled = false, onChange }: Props) {
   const spec = CC_MAP[param];
-  const value = useParamsStore((s) => s.byPart[partId]?.[param]);
   const on = value === 1;
+  const locked = disabled || !onChange;
   return (
     <button
-      disabled={disabled}
-      onClick={() => sendParam(param, on ? 0 : 1)}
+      disabled={locked}
+      onClick={() => onChange?.(param, on ? 0 : 1)}
       className={`rounded-md border px-3 py-1.5 text-xs disabled:opacity-50 ${
         on
           ? 'border-green bg-green/15 text-green'

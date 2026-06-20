@@ -10,7 +10,8 @@ import type { ParsedPattern } from '../midi/sysex/parser.ts';
 import type { PartMeta } from '../store/parts.ts';
 import { partColor } from '../lib/colors.ts';
 import { getProfile } from '../core/profiles/registry.ts';
-import type { Machine, MachinePart, ParamValues } from './machine.ts';
+import { sendParam } from '../midi/bridge.ts';
+import type { Machine, MachineActions, MachinePart, ParamValues } from './machine.ts';
 
 import { useConnectionStore } from '../store/connection.ts';
 import { usePartsStore } from '../store/parts.ts';
@@ -93,3 +94,14 @@ export function useLocalMachine(): Machine {
     selectedPartId,
   });
 }
+
+/**
+ * Edit actions for the local machine. Stable module singleton (reads store state
+ * lazily), wired only to the editable local panel — never to a remote peer.
+ */
+export const localMachineActions: MachineActions = {
+  selectPart: (id) => usePartsStore.getState().selectPart(id),
+  setParam: (param, value) => sendParam(param, value),
+  rename: (id, name) =>
+    usePartsStore.getState().setMetadata(id, { customName: name }),
+};

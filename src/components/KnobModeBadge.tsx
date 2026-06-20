@@ -1,7 +1,4 @@
-import { useGlobalsStore } from '../store/globals.ts';
-
-export function KnobModeBadge() {
-  const knobMode = useGlobalsStore((s) => s.knobMode);
+export function KnobModeBadge({ knobMode }: { knobMode: number | null }) {
   if (knobMode !== 1) return null; // only warn on "Catch"
 
   return (

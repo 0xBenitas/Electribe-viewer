@@ -1,14 +1,19 @@
-import { usePartsStore } from '../store/parts.ts';
-import { useCurrentPatternStore } from '../store/currentPattern.ts';
+import type { MachinePart } from '../model/machine.ts';
 import { PartTile } from './PartTile.tsx';
 
-export function PartGrid() {
-  const parts = usePartsStore((s) => s.parts);
-  const selectedPartId = usePartsStore((s) => s.selectedPartId);
-  const activePartId = usePartsStore((s) => s.activePartId);
-  const selectPart = usePartsStore((s) => s.selectPart);
-  const pattern = useCurrentPatternStore((s) => s.pattern);
+interface PartGridProps {
+  parts: MachinePart[];
+  selectedPartId: number;
+  activePartId: number | null;
+  onSelect?: (id: number) => void;
+}
 
+export function PartGrid({
+  parts,
+  selectedPartId,
+  activePartId,
+  onSelect,
+}: PartGridProps) {
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-xs font-bold uppercase tracking-wider text-text-dim">
@@ -19,11 +24,9 @@ export function PartGrid() {
           <PartTile
             key={part.id}
             part={part}
-            oscType={pattern?.parts[part.id - 1]?.oscType ?? null}
-            muted={pattern?.parts[part.id - 1]?.mute ?? false}
             selected={part.id === selectedPartId}
             active={part.id === activePartId}
-            onSelect={selectPart}
+            onSelect={onSelect}
           />
         ))}
       </div>
