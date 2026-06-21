@@ -33,6 +33,12 @@ export function AudioPanel() {
         ci-dessous. ENSEMBLE gère le reste : tempo, présence, cues.
       </p>
 
+      <p className="text-[11px] text-text-muted">
+        Machine sans MIDI (TB-303 d'origine, modulaire, instrument acoustique) :
+        elle ne s'affiche pas dans le cockpit mais jamme quand même — route son
+        audio vers ton client NINJAM, et cale-la en DIN sync depuis l'hôte.
+      </p>
+
       <div className="flex flex-wrap items-center gap-2">
         <code className="rounded-md border border-line bg-bg-3 px-3 py-1.5 font-mono text-sm text-text">
           {target}
