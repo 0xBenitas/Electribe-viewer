@@ -7,14 +7,47 @@
 
 ## Le produit, le public, la vibe
 
-ENSEMBLE est un **cockpit de jam** pour une crew de musique électronique
-**hardware** (grooveboxes, synthés acid, Elektron…). Pas de grand public : on
-est entre nerds, on assume l'opinionated. C'est un outil **de performance live**,
-souvent en lumière basse, parfois **projeté**. La vibe : sombre, dense mais
-lisible d'un coup d'œil, « matériel/instrument » plus que « SaaS ».
+Un **cockpit de jam** pour une crew de musique électronique **hardware**
+(grooveboxes, synthés acid, Elektron…). Pas de grand public : on est entre nerds,
+on assume l'opinionated. Outil **de performance live**, souvent en lumière basse,
+parfois **projeté**.
 
-Mots-clés : **cockpit, instrument, sombre, tempo, lisible à distance, calé à la
+Mots-clés : **cockpit, acid, psyché, rave, tempo, lisible à distance, calé à la
 mesure, couleurs = sens**.
+
+## Direction artistique : acid / psyché / rave-flyer 🎯
+
+Réf. fournie par le client : un poster **« ACID SOCIETY »** — illustration flat
+très contrastée sur **noir**, **contours noirs épais**, couleurs **électriques**
+(jaune, cyan, rouge/corail, vert, magenta), formes **liquides/qui fondent**,
+motifs **yeux, smileys, soucoupes, champignons, étincelles**, lettrage **gras
+arrondi en 3D** (extrude/ombre portée). Énergie sticker-pack / flyer rave.
+
+On veut **cette énergie**, mais **très fonctionnel** :
+- Le psyché vit dans la **chrome** : wordmark/logo, en-têtes, **héros (le phare)**,
+  accents, **états vides**, fonds/textures, le **plein écran projetable**, les
+  micro-animations. Les **zones de données denses** (grille de parts, sliders de
+  params, listes) restent **nettes et sobres** — lisibilité d'abord.
+- **Contours épais + à-plats** plutôt que dégradés mous ; bordures marquées
+  (tokeniser une épaisseur de trait « acid »).
+- **Palette électrique sur noir** : la palette actuelle (`@theme`) est déjà dans
+  ce ton — on peut **pousser la saturation** et l'utiliser plus franchement. Les
+  16 couleurs de parts collent parfaitement à l'esprit rave (les garder, cf.
+  daltonisme).
+- **Typo bi-niveau** : un **display gras/arrondi** (style « acid ») pour le
+  wordmark, le BPM géant et les gros titres ; **mono** (IBM Plex Mono ou autre)
+  pour les **données/valeurs**. Le contraste display↔mono fait tout le style.
+- **Motifs/illustrations** réutilisables (œil, smiley qui fond, étincelle,
+  soucoupe) comme système d'icônes/ornements — utiles aussi pour la **présence**
+  (avatars/marqueurs de joueurs) et le **feedback de cue**.
+- **Motion** trippy mais au service du sens : pulsation du beat, fonte/“drip” sur
+  le flash de cue « MAINTENANT », étincelles sur un événement. Jamais distrayant
+  sur les données.
+- **Contraste & lisibilité scène** non négociables : c'est joué en live, parfois
+  projeté. Du fun, mais on lit tout d'un coup d'œil.
+
+Garde-fou : le **fun est dans l'habillage**, la **fonction reste reine**. Si une
+fioriture nuit à la lecture en live, elle saute.
 
 ## Principes de design
 
@@ -60,6 +93,12 @@ classe.
   durées/easings tokenisés (cf. `animate-pulse` ad hoc).
 - **Variantes de boutons** (primaire/secondaire/ghost/danger) — aujourd'hui
   réécrites inline (ex. `inputCls` dupliqué dans `SessionBar` et `DeviceSetup`).
+- **Police display « acid »** (gras/arrondie) pour wordmark + gros titres + BPM
+  géant, en plus de la mono pour les données.
+- **Épaisseur de trait « acid »** tokenisée (contours épais) + éventuelles
+  textures de fond.
+- **Système de motifs/icônes** (œil, smiley, étincelle, soucoupe) réutilisable
+  (présence, feedback de cue, ornements, états vides).
 
 ## Inventaire des composants (`src/components/`)
 
