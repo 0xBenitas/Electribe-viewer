@@ -8,6 +8,8 @@ import modelCycles from '../../../device-profiles/elektron-model-cycles.json';
 import digitakt from '../../../device-profiles/elektron-digitakt.json';
 import td3 from '../../../device-profiles/behringer-td-3.json';
 import tb3 from '../../../device-profiles/roland-tb-3.json';
+import tb03 from '../../../device-profiles/roland-tb-03.json';
+import tt303 from '../../../device-profiles/cyclone-tt-303.json';
 import type { DeviceProfile } from './types.ts';
 import type { DeviceIdentity } from '../../midi/deviceInquiry.ts';
 
@@ -18,6 +20,8 @@ export const PROFILES: readonly DeviceProfile[] = [
   digitakt as DeviceProfile,
   td3 as DeviceProfile,
   tb3 as DeviceProfile,
+  tb03 as DeviceProfile,
+  tt303 as DeviceProfile,
 ];
 
 /** Find a profile whose port-name matchers are a substring of `portName`. */

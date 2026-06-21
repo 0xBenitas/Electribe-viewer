@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "roland-tb-03",
+  "status": "draft",
+  "identity": {
+    "manufacturer": "Roland",
+    "model": "TB-03",
+    "webMidiPortNames": ["tb-03"]
+  },
+  "midi": {
+    "channelModel": "global",
+    "sysex": true,
+    "ccParams": []
+  },
+  "clock": {
+    "canBeMaster": true,
+    "canBeSlave": true,
+    "transport": ["start", "stop", "continue"],
+    "songPosition": false
+  },
+  "tracks": {
+    "count": 1,
+    "label": "part"
+  },
+  "audio": {
+    "outputs": [{ "name": "Out", "channels": "mono" }]
+  },
+  "telemetry": {
+    "reportsActivePart": false,
+    "reportsPatternDump": false,
+    "reportsGlobalDump": false,
+    "reportsCcTweaks": true
+  }
+}
