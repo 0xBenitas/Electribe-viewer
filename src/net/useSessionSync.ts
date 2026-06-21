@@ -39,6 +39,11 @@ export function useSessionSync(
       room: config.room,
       info: { name: config.name },
       onMessage: dispatchServerMessage,
+      onStatus: (status) => {
+        // Surface link health; on an unexpected drop, shed now-stale peers.
+        if (status === 'closed') useSessionStore.getState().connectionLost();
+        else useSessionStore.getState().setLinkStatus(status);
+      },
     });
     client.connect();
     setActiveClient(client);
@@ -54,14 +59,21 @@ export function useSessionSync(
       client.sendDevice({ ...snapshot, updatedAt: Date.now() });
     }, SNAPSHOT_INTERVAL_MS);
 
-    // Only the host broadcasts the shared tempo, and only while the clock runs.
-    // Bar/beat are valid before BPM warms up, so don't gate on bpm.
+    // Only the host broadcasts the shared tempo. While running, send every tick
+    // (bar/beat are valid before BPM warms up). On stop, send ONE final frame so
+    // peers learn the host stopped instead of just seeing the clock go stale.
+    let wasRunning = false;
     const transportTimer = setInterval(() => {
       const { self, hostId } = useSessionStore.getState();
       if (!self || self.id !== hostId) return;
       const c = clockSnapshot(performance.now());
-      if (!c.running) return;
-      client.sendTransport({ bpm: c.bpm ?? 0, bar: c.bar, beat: c.beat });
+      if (c.running) {
+        client.sendTransport({ bpm: c.bpm ?? 0, bar: c.bar, beat: c.beat, running: true });
+        wasRunning = true;
+      } else if (wasRunning) {
+        client.sendTransport({ bpm: c.bpm ?? 0, bar: c.bar, beat: c.beat, running: false });
+        wasRunning = false;
+      }
     }, TRANSPORT_INTERVAL_MS);
 
     return () => {

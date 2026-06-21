@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { ninjamTarget } from '../core/transport/ninjam.ts';
 import { useSessionStore } from '../store/session.ts';
 
+// ninjamTarget appends the default port when none is given.
 const NINJAM_HOST =
-  (import.meta.env.VITE_NINJAM_HOST as string | undefined) ?? 'localhost:2049';
+  (import.meta.env.VITE_NINJAM_HOST as string | undefined) ?? 'localhost';
 
 export function AudioPanel() {
   const self = useSessionStore((s) => s.self);

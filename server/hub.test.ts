@@ -65,7 +65,13 @@ describe('SessionHub', () => {
     hub.handle('a', { t: 'join', room: 'jam', info: { name: 'A' } }); // host
     hub.handle('b', { t: 'join', room: 'jam', info: { name: 'B' } });
 
-    const fromHost = hub.handle('a', { t: 'transport', bpm: 120, bar: 2, beat: 3 });
+    const fromHost = hub.handle('a', {
+      t: 'transport',
+      bpm: 120,
+      bar: 2,
+      beat: 3,
+      running: true,
+    });
     expect(fromHost[0]!.msg).toMatchObject({
       t: 'transport',
       host: 'a',
@@ -73,9 +79,16 @@ describe('SessionHub', () => {
       bpm: 120,
       bar: 2,
       beat: 3,
+      running: true,
     });
 
-    const fromNonHost = hub.handle('b', { t: 'transport', bpm: 99, bar: 1, beat: 1 });
+    const fromNonHost = hub.handle('b', {
+      t: 'transport',
+      bpm: 99,
+      bar: 1,
+      beat: 1,
+      running: true,
+    });
     expect(fromNonHost).toEqual([]);
   });
 

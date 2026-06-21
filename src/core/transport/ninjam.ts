@@ -7,7 +7,7 @@
 // the user pastes into that native client. The cockpit owns everything else
 // (BPM, bar position, presence, cues) over WebSocket.
 
-import type { AudioTransport, Peer, SessionConfig } from './types.ts';
+import type { AudioTransport, SessionConfig } from './types.ts';
 
 /** Default NINJAM server port. */
 export const NINJAM_DEFAULT_PORT = 2049;
@@ -24,8 +24,6 @@ export function ninjamTarget(host: string): string {
 
 export class NinjamTransport implements AudioTransport {
   private config: SessionConfig | null = null;
-  private peerJoin: ((peer: Peer) => void) | null = null;
-  private peerLeave: ((peer: Peer) => void) | null = null;
 
   async connect(session: SessionConfig): Promise<void> {
     // No socket opened here in v1: audio is out of the browser's hands.
@@ -41,25 +39,13 @@ export class NinjamTransport implements AudioTransport {
     return 0;
   }
 
-  onPeerJoin(cb: (peer: Peer) => void): void {
-    this.peerJoin = cb;
-  }
-
-  onPeerLeave(cb: (peer: Peer) => void): void {
-    this.peerLeave = cb;
-  }
+  // v1: peer presence comes from the WebSocket session layer, not from NINJAM,
+  // so these AudioTransport hooks are intentional no-ops for this backend.
+  onPeerJoin(): void {}
+  onPeerLeave(): void {}
 
   /** `host:port` to paste into Jamtaba / Reaper. Null until connected. */
   nativeClientTarget(): string | null {
     return this.config ? ninjamTarget(this.config.serverHost) : null;
-  }
-
-  /** Wired by the session layer once real peer events exist (Phase 1+). */
-  emitPeerJoin(peer: Peer): void {
-    this.peerJoin?.(peer);
-  }
-
-  emitPeerLeave(peer: Peer): void {
-    this.peerLeave?.(peer);
   }
 }

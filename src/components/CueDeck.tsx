@@ -48,7 +48,9 @@ export function CueDeck() {
   };
 
   const senderName = (peer: string) =>
-    peer === selfId ? 'toi' : (peers[peer]?.info.name ?? peer);
+    peer === selfId || peer === 'local'
+      ? 'toi'
+      : (peers[peer]?.info.name ?? peer);
 
   const live = cues
     .map((c) => ({ ...c, status: cueStatus(c.cue, currentBar) }))

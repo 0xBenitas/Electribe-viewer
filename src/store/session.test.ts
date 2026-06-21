@@ -52,7 +52,7 @@ describe('session store', () => {
     expect(useSessionStore.getState().peers.p1).toBeUndefined();
 
     s.setSelf('me', { name: 'B' });
-    s.setTransport({ bpm: 120, bar: 1, beat: 1 });
+    s.setTransport({ bpm: 120, bar: 1, beat: 1, running: true });
     useSessionStore.getState().reset();
     const st = useSessionStore.getState();
     expect(st.self).toBeNull();

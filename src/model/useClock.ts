@@ -49,7 +49,7 @@ export function resolveSharedTransport(args: {
     bpm: transport.bpm,
     bar: transport.bar,
     beat: transport.beat,
-    running: true,
+    running: transport.running,
     source: 'remote',
   };
 }

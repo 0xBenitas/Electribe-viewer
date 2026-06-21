@@ -27,15 +27,4 @@ describe('NinjamTransport', () => {
     expect(t.nativeClientTarget()).toBeNull();
   });
 
-  it('relays peer events to its callbacks', () => {
-    const t = new NinjamTransport();
-    const joined: string[] = [];
-    const left: string[] = [];
-    t.onPeerJoin((p) => joined.push(p.id));
-    t.onPeerLeave((p) => left.push(p.id));
-    t.emitPeerJoin({ id: 'p1', name: 'A' });
-    t.emitPeerLeave({ id: 'p1', name: 'A' });
-    expect(joined).toEqual(['p1']);
-    expect(left).toEqual(['p1']);
-  });
 });

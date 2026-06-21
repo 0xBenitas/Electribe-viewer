@@ -73,8 +73,21 @@ describe('dispatchServerMessage', () => {
     dispatchServerMessage({ t: 'device', peer: 'p1', snapshot: snap(5, 2) });
     expect(useSessionStore.getState().peers.p1!.device?.activePart).toBe(2);
 
-    dispatchServerMessage({ t: 'transport', host: 'p1', serverTs: 1, bpm: 128, bar: 3, beat: 4 });
-    expect(useSessionStore.getState().transport).toEqual({ bpm: 128, bar: 3, beat: 4 });
+    dispatchServerMessage({
+      t: 'transport',
+      host: 'p1',
+      serverTs: 1,
+      bpm: 128,
+      bar: 3,
+      beat: 4,
+      running: true,
+    });
+    expect(useSessionStore.getState().transport).toEqual({
+      bpm: 128,
+      bar: 3,
+      beat: 4,
+      running: true,
+    });
 
     dispatchServerMessage({ t: 'peer-leave', peer: 'p1' });
     expect(useSessionStore.getState().peers.p1).toBeUndefined();

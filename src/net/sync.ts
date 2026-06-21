@@ -36,7 +36,12 @@ export function dispatchServerMessage(msg: ServerMessage): void {
     case 'transport':
       // The server gates transport to the host; trust its `host` as authoritative.
       store.setHostId(msg.host);
-      store.setTransport({ bpm: msg.bpm, bar: msg.bar, beat: msg.beat });
+      store.setTransport({
+        bpm: msg.bpm,
+        bar: msg.bar,
+        beat: msg.beat,
+        running: msg.running,
+      });
       break;
     case 'cue':
       useCueStore.getState().add({ cue: msg.cue, peer: msg.peer });

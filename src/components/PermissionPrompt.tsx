@@ -7,8 +7,8 @@ export function PermissionPrompt({ onRetry }: PermissionPromptProps) {
     <div className="mx-auto max-w-md p-8 text-center">
       <h1 className="mb-3 text-2xl font-bold text-red">Accès MIDI refusé</h1>
       <p className="mb-4 text-text-dim">
-        EMX.PILOT a besoin de l'autorisation MIDI (avec SysEx) pour parler à
-        l'Electribe. Autorise l'accès puis réessaie.
+        ENSEMBLE a besoin de l'autorisation MIDI (avec SysEx) pour parler à
+        ta machine. Autorise l'accès puis réessaie.
       </p>
       <button
         onClick={onRetry}

@@ -14,6 +14,9 @@ import type {
   TransportTick,
 } from '../core/session/protocol.ts';
 
+/** WebSocket link health for the current session. */
+export type LinkStatus = 'idle' | 'connecting' | 'open' | 'closed';
+
 interface SessionStore {
   self: { id: string; info: PeerInfo } | null;
   peers: Record<string, PeerState>;
@@ -23,14 +26,19 @@ interface SessionStore {
   transport: TransportTick | null;
   /** When `transport` was last updated (ms), for staleness; null if never. */
   transportAt: number | null;
+  /** WebSocket link health, surfaced to the user. */
+  linkStatus: LinkStatus;
 
   setSelf: (id: string, info: PeerInfo) => void;
   setHostId: (id: PeerId | null) => void;
+  setLinkStatus: (status: LinkStatus) => void;
   addPeer: (peer: PeerState) => void;
   removePeer: (id: string) => void;
   /** Apply a peer's snapshot, dropping stale (out-of-order) frames. */
   applySnapshot: (peerId: string, snapshot: DeviceSnapshot) => void;
   setTransport: (transport: TransportTick | null) => void;
+  /** Socket dropped: mark closed and drop now-stale peers/transport (keep self). */
+  connectionLost: () => void;
   reset: () => void;
 }
 
@@ -40,10 +48,13 @@ export const useSessionStore = create<SessionStore>((set) => ({
   hostId: null,
   transport: null,
   transportAt: null,
+  linkStatus: 'idle',
 
   setSelf: (id, info) => set({ self: { id, info } }),
 
   setHostId: (hostId) => set({ hostId }),
+
+  setLinkStatus: (linkStatus) => set({ linkStatus }),
 
   // Upsert: a peer-join can re-announce an existing peer (e.g. host promotion);
   // merge so we don't drop a device snapshot we already hold.
@@ -68,6 +79,15 @@ export const useSessionStore = create<SessionStore>((set) => ({
   setTransport: (transport) =>
     set({ transport, transportAt: transport === null ? null : Date.now() }),
 
+  connectionLost: () =>
+    set({
+      linkStatus: 'closed',
+      peers: {},
+      hostId: null,
+      transport: null,
+      transportAt: null,
+    }),
+
   reset: () =>
     set({
       self: null,
@@ -75,5 +95,6 @@ export const useSessionStore = create<SessionStore>((set) => ({
       hostId: null,
       transport: null,
       transportAt: null,
+      linkStatus: 'idle',
     }),
 }));

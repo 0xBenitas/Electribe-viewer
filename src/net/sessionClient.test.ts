@@ -65,7 +65,7 @@ describe('SessionClient', () => {
     const { socket, client } = setup();
     client.connect();
     socket.sent = [];
-    client.sendTransport({ bpm: 120, bar: 1, beat: 2 });
+    client.sendTransport({ bpm: 120, bar: 1, beat: 2, running: true });
     client.sendDevice({
       profileId: null,
       model: 'X',
@@ -74,7 +74,13 @@ describe('SessionClient', () => {
       pattern: null,
       updatedAt: 9,
     });
-    expect(socket.parsedSent()[0]).toEqual({ t: 'transport', bpm: 120, bar: 1, beat: 2 });
+    expect(socket.parsedSent()[0]).toEqual({
+      t: 'transport',
+      bpm: 120,
+      bar: 1,
+      beat: 2,
+      running: true,
+    });
     expect(socket.parsedSent()[1]).toMatchObject({ t: 'device', snapshot: { updatedAt: 9 } });
   });
 

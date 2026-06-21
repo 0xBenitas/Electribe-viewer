@@ -38,7 +38,7 @@ describe('resolveSharedTransport', () => {
   it('uses a fresh relayed transport for a non-host peer', () => {
     const t = resolveSharedTransport({
       local,
-      transport: { bpm: 128, bar: 7, beat: 1 },
+      transport: { bpm: 128, bar: 7, beat: 1, running: true },
       transportAt: 1000,
       ownsClock: false,
       now: 1000 + TRANSPORT_STALE_MS - 1,
@@ -46,10 +46,21 @@ describe('resolveSharedTransport', () => {
     expect(t).toEqual({ bpm: 128, bar: 7, beat: 1, running: true, source: 'remote' });
   });
 
+  it('reflects a relayed stop frame (running false) for a peer', () => {
+    const t = resolveSharedTransport({
+      local,
+      transport: { bpm: 128, bar: 7, beat: 1, running: false },
+      transportAt: 1000,
+      ownsClock: false,
+      now: 1000 + 10,
+    });
+    expect(t).toMatchObject({ running: false, source: 'remote' });
+  });
+
   it('expires a relayed transport once the host goes quiet', () => {
     const t = resolveSharedTransport({
       local,
-      transport: { bpm: 128, bar: 7, beat: 1 },
+      transport: { bpm: 128, bar: 7, beat: 1, running: true },
       transportAt: 1000,
       ownsClock: false,
       now: 1000 + TRANSPORT_STALE_MS + 1,

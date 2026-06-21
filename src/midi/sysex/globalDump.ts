@@ -62,9 +62,3 @@ export function parseGlobalDump(raw: Uint8Array): ParsedGlobals {
     sendFilter: raw[43]!,
   };
 }
-
-export const KNOB_MODE_LABEL: Record<KnobMode, string> = {
-  0: 'Jump',
-  1: 'Catch',
-  2: 'Value Scale',
-};

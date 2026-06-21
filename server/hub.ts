@@ -114,6 +114,7 @@ export class SessionHub {
           bpm: tick.bpm,
           bar: tick.bar,
           beat: tick.beat,
+          running: tick.running,
         },
       },
     ];

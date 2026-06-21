@@ -44,6 +44,8 @@ export interface TransportTick {
   bar: number;
   /** 1-based beat within the bar. */
   beat: number;
+  /** Whether the host sequencer is running (false = a stop frame). */
+  running: boolean;
 }
 
 /** Messages a client sends to the server. */

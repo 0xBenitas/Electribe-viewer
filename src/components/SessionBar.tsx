@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSessionStore } from '../store/session.ts';
+import { useSharedTransport } from '../model/useClock.ts';
 import type { SessionConnectConfig } from '../net/useSessionSync.ts';
 
 interface Props {
@@ -17,7 +18,8 @@ export function SessionBar({ connected, onConnect, onDisconnect }: Props) {
   const [room, setRoom] = useState('jam');
   const self = useSessionStore((s) => s.self);
   const peers = useSessionStore((s) => s.peers);
-  const transport = useSessionStore((s) => s.transport);
+  const linkStatus = useSessionStore((s) => s.linkStatus);
+  const transport = useSharedTransport();
 
   if (!connected) {
     return (
@@ -65,10 +67,16 @@ export function SessionBar({ connected, onConnect, onDisconnect }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-green/40 bg-green/5 p-4 text-sm">
       <span className="font-bold text-green">Session « {room} »</span>
+      {linkStatus !== 'open' && (
+        <span className="text-yellow">
+          {linkStatus === 'connecting' ? 'connexion…' : 'connexion perdue'}
+        </span>
+      )}
       {self && <span className="text-text-dim">toi : {self.info.name}</span>}
-      {transport && (
+      {transport && transport.running && (
         <span className="text-text-dim">
-          {transport.bpm.toFixed(0)} BPM · mesure {transport.bar}
+          {transport.bpm !== null ? transport.bpm.toFixed(0) : '—'} BPM · mesure{' '}
+          {transport.bar}
         </span>
       )}
       <span className="text-text-dim">
