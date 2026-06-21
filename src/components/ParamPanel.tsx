@@ -46,7 +46,7 @@ export function ParamPanel({
 
       {editable && activePartId === null && (
         <p className="text-xs text-yellow">
-          Part actif inconnu — tourne un knob sur la machine pour qu'ENSEMBLE
+          Part actif inconnu — tourne un knob sur la machine pour que JAMBOREE
           détecte le part sélectionné (ADR-001).
         </p>
       )}

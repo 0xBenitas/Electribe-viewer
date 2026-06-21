@@ -12,7 +12,7 @@ export const DEFAULT_SERVER =
   (import.meta.env.VITE_SESSION_URL as string | undefined) ??
   'ws://localhost:8787';
 
-const STORAGE_KEY = 'ensemble.session';
+const STORAGE_KEY = 'jamboree.session';
 
 /** URL query wins (shared link), then stored prefs, then defaults. */
 export function resolvePrefs(

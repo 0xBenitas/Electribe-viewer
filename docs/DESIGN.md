@@ -1,7 +1,7 @@
 # DESIGN — brief & orientation du design system
 
 > Pour la passe design (Claude design). But : un **design system cohérent** pour
-> ENSEMBLE, sans toucher à la logique. Tout le rendu vit dans
+> JAMBOREE, sans toucher à la logique. Tout le rendu vit dans
 > `src/components/` + les tokens dans `src/styles/globals.css`. Les composants
 > consomment un read-model `Machine` et des callbacks → **restyle librement**.
 

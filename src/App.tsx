@@ -44,7 +44,7 @@ export function App() {
       <MultiTabGuard />
       <header className="border-b border-line px-6 py-4">
         <h1 className="text-xl font-bold tracking-wide text-blue">
-          ENSEMBLE
+          JAMBOREE
         </h1>
         <p className="text-xs text-text-muted">
           Jam collaboratif à distance · machines hardware

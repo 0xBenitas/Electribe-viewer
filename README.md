@@ -1,4 +1,4 @@
-# ENSEMBLE
+# JAMBOREE
 
 Outil de **jam collaboratif à distance** pour une crew de musique électronique
 hardware. Tu te connectes avec tes potes, tu **vois leurs machines** (parts, sons,
@@ -7,7 +7,7 @@ malgré la latence. En solo, c'est un éditeur/viewer pour ta machine, dans la m
 appli.
 
 > Issu d'EMX.PILOT (companion Korg Electribe 2), désormais fusionné en un seul
-> produit. Voir `docs/ENSEMBLE.md` (vision + roadmap) et `docs/DECISIONS.md`
+> produit. Voir `docs/JAMBOREE.md` (vision + roadmap) et `docs/DECISIONS.md`
 > (ADR-005).
 
 ## Ce que ça fait
@@ -21,7 +21,7 @@ appli.
   atterrit proprement à la mesure suivante. Le différenciateur : le décalage d'une
   mesure devient le médium du signal.
 - **Audio via NINJAM** — hors navigateur : chacun connecte son client natif
-  (Jamtaba / Reaper). ENSEMBLE orchestre le reste.
+  (Jamtaba / Reaper). JAMBOREE orchestre le reste.
 
 ## Stack
 
@@ -50,7 +50,7 @@ src/styles/    Tailwind + palette
 server/        relais de session WebSocket (hub pur + adaptateur ws)
 device-profiles/ profils JSON versionnés (un par machine)
 infra/         docker-compose + Caddy + NINJAM
-docs/          vision (ENSEMBLE.md), décisions (DECISIONS.md), déploiement (DEPLOY.md), backlog (BACKLOG.md), design (DESIGN.md)
+docs/          vision (JAMBOREE.md), décisions (DECISIONS.md), déploiement (DEPLOY.md), backlog (BACKLOG.md), design (DESIGN.md)
 ```
 
 ## Browser support

@@ -1,4 +1,4 @@
-// ENSEMBLE session server — thin `ws` adapter over the pure SessionHub.
+// JAMBOREE session server — thin `ws` adapter over the pure SessionHub.
 // Run with: npm run server   (tsx watch)   /   npm run server:start
 //
 // The browser carries NO audio (that's the native NINJAM client). This process
@@ -47,4 +47,4 @@ wss.on('connection', (ws) => {
   });
 });
 
-console.log(`ENSEMBLE session server listening on ws://localhost:${PORT}`);
+console.log(`JAMBOREE session server listening on ws://localhost:${PORT}`);

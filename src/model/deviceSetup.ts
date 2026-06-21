@@ -1,4 +1,4 @@
-// Guided setup for an unknown machine (ENSEMBLE §4.3): a few simple answers →
+// Guided setup for an unknown machine (JAMBOREE §4.3): a few simple answers →
 // a draft Device Profile JSON the user can drop into /device-profiles and PR.
 // Pure and testable; the UI (DeviceSetup) just collects the answers.
 

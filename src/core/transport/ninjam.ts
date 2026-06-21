@@ -1,4 +1,4 @@
-// NINJAM transport — v1 backend (ENSEMBLE §3).
+// NINJAM transport — v1 backend (JAMBOREE §3).
 //
 // REALITY CHECK (do not regress on this): there is no production-ready browser
 // NINJAM client today. In v1 the audio flows through a *native* client (Jamtaba,

@@ -1,6 +1,6 @@
 // Multi-tab guard (spec §6.12). Only one tab should drive the MIDI port.
 
-const CHANNEL = 'ensemble';
+const CHANNEL = 'jamboree';
 
 interface GuardMessage {
   type: 'claim' | 'present' | 'released';

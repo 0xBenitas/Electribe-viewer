@@ -1,6 +1,6 @@
 // Session relay — pure room/fan-out logic, no I/O.
 //
-// The server is a thin fan-out relay (ENSEMBLE §6): presence, the host's shared
+// The server is a thin fan-out relay (JAMBOREE §6): presence, the host's shared
 // transport, device-state replication, and bar-aligned cues. No audio touches
 // this socket. Keeping the logic pure makes it fully unit-testable; the `ws`
 // adapter (index.ts) only maps sockets to peer ids and ships the bytes.

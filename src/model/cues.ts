@@ -1,4 +1,4 @@
-// Non-verbal cues — the project's differentiator (ENSEMBLE §5).
+// Non-verbal cues — the project's differentiator (JAMBOREE §5).
 //
 // A cue fired during bar N lands at bar N+1 on the SHARED (host) timeline, so
 // everyone reveals it at the same musical downbeat despite network latency: the

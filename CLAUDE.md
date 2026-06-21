@@ -1,9 +1,9 @@
 # CLAUDE.md — orientation du repo
 
-**ENSEMBLE** : outil de jam collaboratif à distance pour une crew de musique
+**JAMBOREE** : outil de jam collaboratif à distance pour une crew de musique
 électronique hardware. On voit/édite sa machine, on voit celles des potes, on
 joue calé au tempo (malgré la latence), avec des cues calés à la mesure. L'audio
-passe par NINJAM (client natif, pas le navigateur). Vision : `docs/ENSEMBLE.md`.
+passe par NINJAM (client natif, pas le navigateur). Vision : `docs/JAMBOREE.md`.
 
 ## Lancer
 

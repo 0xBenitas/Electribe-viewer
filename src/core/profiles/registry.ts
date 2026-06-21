@@ -1,4 +1,4 @@
-// Device Profile registry + matching (ENSEMBLE §4).
+// Device Profile registry + matching (JAMBOREE §4).
 // Profiles are versioned JSON under /device-profiles. Auto-detection matches a
 // live Web MIDI port (and, when available, the SysEx Identity Reply) to a profile.
 

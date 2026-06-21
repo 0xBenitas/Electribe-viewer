@@ -25,7 +25,7 @@ export class EMXPilotDB extends Dexie {
   presets!: Table<Preset, string>;
 
   constructor() {
-    // IndexedDB name kept as-is across the ENSEMBLE rename: renaming it would
+    // IndexedDB name kept as-is across the JAMBOREE rename: renaming it would
     // orphan users' locally saved presets / part metadata.
     super('emx-pilot');
     this.version(1).stores({

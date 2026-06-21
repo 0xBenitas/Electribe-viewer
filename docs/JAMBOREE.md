@@ -1,8 +1,8 @@
-# ENSEMBLE — vision fusionnée & roadmap
+# JAMBOREE — vision fusionnée & roadmap
 
 > Ce repo évolue d'EMX.PILOT (éditeur mono-machine Korg Electribe 2) vers
-> **ENSEMBLE** : un cockpit de jam où l'on joue *et* édite ses machines, seul ou
-> à plusieurs à distance. Décision actée : **ADR-005** (le brief ENSEMBLE
+> **JAMBOREE** : un cockpit de jam où l'on joue *et* édite ses machines, seul ou
+> à plusieurs à distance. Décision actée : **ADR-005** (le brief JAMBOREE
 > d'origine, hors repo, en est la source ; sa stack est révisée par l'ADR-005).
 
 ## L'idée en une phrase
@@ -60,7 +60,7 @@ réseau WS ──► DeviceSnapshot ─┘   (même UI rend local OU distant)
 | 2c | Diffusion `DeviceSnapshot` (hôte→pairs) + rendu des machines des pairs | 🟩 fait (`useSessionSync`, `usePeerMachines`) |
 | 3 | Cues non-verbaux calés à la mesure (le différenciateur) | 🟩 fait (`CueDeck`, store cues, relais serveur) |
 | 4 | (R&D, optionnel) Audio dans le navigateur — hors chemin critique | ⬜ |
-| — | Rename EMX.PILOT → ENSEMBLE | 🟩 fait |
+| — | Rename EMX.PILOT → JAMBOREE | 🟩 fait |
 | — | Monorepo (`apps/`/`packages/`) | ⛔ écarté : sur-ingénierie pour 1 app + 1 petit serveur ; `src/core` donne déjà la séparation. À reconsidérer si 2ᵉ app / déploiement indépendant. |
 
 ## Serveur de session

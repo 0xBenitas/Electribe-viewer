@@ -1,4 +1,4 @@
-// Audio transport abstraction (ENSEMBLE §8).
+// Audio transport abstraction (JAMBOREE §8).
 // The cockpit never talks to an audio engine directly — it talks to this
 // interface. v1 backend = NINJAM (orchestrates a *native* client; the browser
 // does NOT carry audio in v1). Jamulus / WebRTC backends can be added without

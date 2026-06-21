@@ -268,7 +268,9 @@ mais « faire évoluer ce repo » (historique + cœur MIDI gardés).
 ### Mise à jour (suite de la session)
 
 Tout le « reste à construire » ci-dessus est livré (clock, serveur WS, câblage
-snapshot, audio NINJAM, UI cockpit). Le **rename EMX.PILOT → ENSEMBLE est fait** ;
-le **monorepo `apps/`/`packages/` est écarté** (sur-ingénierie pour 1 app + 1 petit
-serveur ; `src/core` donne déjà la séparation). État courant suivi dans
-`docs/ENSEMBLE.md`.
+snapshot, audio NINJAM, UI cockpit). Renommages successifs du produit :
+**EMX.PILOT → ENSEMBLE → JAMBOREE** (nom final). Le **monorepo `apps/`/`packages/`
+est écarté** (sur-ingénierie pour 1 app + 1 petit serveur ; `src/core` donne déjà
+la séparation). État courant suivi dans `docs/JAMBOREE.md` ; direction design dans
+`docs/DESIGN.md`. Les ADR ci-dessus restent historiques (nom au moment de la
+décision).

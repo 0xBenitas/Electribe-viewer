@@ -1,4 +1,4 @@
-# Backlog ENSEMBLE — TODO, quick wins, idées
+# Backlog JAMBOREE — TODO, quick wins, idées
 
 > Parking organisé pour après le périmètre actuel (qui est complet et clean).
 > Rien ici n'est engagé : on pioche au fil de l'eau.

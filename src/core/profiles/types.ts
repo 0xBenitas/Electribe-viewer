@@ -1,4 +1,4 @@
-// Device Profile schema — the declarative description of a machine (ENSEMBLE §4).
+// Device Profile schema — the declarative description of a machine (JAMBOREE §4).
 // One JSON file per machine, versioned under /device-profiles. The cockpit reads
 // these to drive auto-detection and a capability-driven UI (never a dead button).
 

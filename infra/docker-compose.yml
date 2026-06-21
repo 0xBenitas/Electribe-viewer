@@ -1,4 +1,4 @@
-# ENSEMBLE — self-hosted stack (ENSEMBLE §6, Phase 0).
+# JAMBOREE — self-hosted stack (JAMBOREE §6, Phase 0).
 #
 #   caddy   : TLS + serves the built cockpit and reverse-proxies the WS server
 #   ws      : the session relay (presence / BPM / device replication / cues)

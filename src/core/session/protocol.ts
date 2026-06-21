@@ -1,4 +1,4 @@
-// WebSocket session protocol (ENSEMBLE §5, §6).
+// WebSocket session protocol (JAMBOREE §5, §6).
 // One room = one jam session. The server is a thin fan-out relay: presence,
 // shared BPM (host is the single source of truth), device-state replication,
 // and bar-aligned non-verbal cues. No audio touches this socket.
