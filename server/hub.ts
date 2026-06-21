@@ -82,7 +82,8 @@ export class SessionHub {
   private join(peerId: string, room: string, info: PeerInfo): Outbound[] {
     this.members.delete(peerId); // tolerate a re-join
     const existing = this.roomPeerStates(room);
-    const isHost = !existing.some((p) => p.isHost);
+    // A listener (no machine) is never host; the first real player is.
+    const isHost = !info.listener && !existing.some((p) => p.isHost);
     const state: PeerState = { id: peerId, info, isHost };
     this.members.set(peerId, { room, state, joinedAt: this.now() });
 
@@ -155,10 +156,11 @@ export class SessionHub {
     return this.roomPeerIds(room).filter((id) => id !== peerId);
   }
 
+  /** Earliest-joined non-listener — the candidate for host promotion. */
   private oldestMember(room: string): Member | null {
     return (
       [...this.members.values()]
-        .filter((m) => m.room === room)
+        .filter((m) => m.room === room && !m.state.info.listener)
         .sort((a, b) => a.joinedAt - b.joinedAt)[0] ?? null
     );
   }

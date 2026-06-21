@@ -41,11 +41,30 @@ export function CueDeck() {
   }, [running, currentBar, pruneCues, clearCues]);
 
   const fire = (kind: CueKind) => {
-    if (!transport) return;
+    if (!transport || !transport.running) return;
     const cue = buildCue(kind, transport.bar + 1);
     sendCue(cue); // to peers (no-op when solo)
     addCue({ cue, peer: selfId }); // optimistic local feedback
   };
+
+  // Keyboard shortcuts 1–5 fire the cues, hands-free from the machine. A ref
+  // keeps the listener bound once while always calling the latest `fire`.
+  const fireRef = useRef(fire);
+  fireRef.current = fire;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
+        return;
+      }
+      const idx = Number(e.key) - 1;
+      if (Number.isInteger(idx) && idx >= 0 && idx < CUE_ORDER.length) {
+        fireRef.current(CUE_ORDER[idx]!);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const senderName = (peer: string) =>
     peer === selfId || peer === 'local'
@@ -71,14 +90,16 @@ export function CueDeck() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {CUE_ORDER.map((kind) => (
+        {CUE_ORDER.map((kind, i) => (
           <button
             key={kind}
             onClick={() => fire(kind)}
             disabled={!canFire}
+            title={`Raccourci : ${i + 1}`}
             className="rounded-md border border-line bg-bg-3 px-3 py-1.5 text-sm font-medium text-text transition-colors hover:border-blue hover:text-blue disabled:opacity-40 disabled:hover:border-line disabled:hover:text-text"
           >
             {CUE_LABELS[kind]}
+            <span className="ml-1.5 text-[10px] text-text-muted">{i + 1}</span>
           </button>
         ))}
       </div>

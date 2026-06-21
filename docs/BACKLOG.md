@@ -14,21 +14,16 @@
 
 ## Quick wins (petits, fort impact)
 
-- [ ] **Persister nom / room / serveur** en `localStorage` → le formulaire de
-      session se re-remplit tout seul.
-- [ ] **Lien de session partageable** : URL avec `?room=...&server=...` → un clic
-      pour rejoindre, plus de copier-coller.
-- [ ] **Mode « écoute seule » explicite** : bouton pour rejoindre une room sans
-      machine MIDI (voir tempo/présence/cues + écouter via NINJAM). Marche déjà en
-      pratique, juste à rendre clair dans l'UI.
-- [ ] **Raccourcis clavier pour les cues** (1–5 = Break/Monte/Baisse/Drop/Coupe) :
-      signaler sans lâcher les mains des machines.
-- [ ] **Indicateur de latence** : le `ping`/`pong` existe déjà dans le protocole
-      (handler stub) — calculer le RTT et l'afficher dans la barre de session.
-- [ ] **Phare plein écran** : la position dans la mesure en grand (route `/lighthouse`
-      ou plein écran), projetable pendant la jam.
+- [x] **Persister nom / room / serveur** en `localStorage` (`src/lib/sessionPrefs.ts`).
+- [x] **Lien de session partageable** : `?room=&server=` + bouton « Copier le lien ».
+- [x] **Mode « écoute seule »** : bouton « Écouter seulement » (rejoint sans machine,
+      jamais hôte côté serveur ; cockpit allégé).
+- [x] **Raccourcis clavier pour les cues** (1–5) + numéros sur les boutons.
+- [x] **Indicateur de latence** : ping/pong → RTT affiché dans la barre de session.
+- [x] **Phare plein écran** : `LighthouseOverlay` (bouton ⛶, Esc pour fermer).
 - [ ] **Passer les profils `draft` en `verified`** au fur et à mesure qu'on les
       confirme sur le hardware (Model:Samples, Model:Cycles, le clone 303…).
+      *(en attente : ne pas marquer « verified » sans test matériel.)*
 
 ## Idées (plus gros / R&D)
 

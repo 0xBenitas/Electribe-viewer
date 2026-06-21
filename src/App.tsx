@@ -26,6 +26,7 @@ export function App() {
   const [sessionConfig, setSessionConfig] =
     useState<SessionConnectConfig | null>(null);
 
+  const listenOnly = sessionConfig?.listenOnly ?? false;
   const localMachine = useLocalMachine();
   useClockDriver();
   useSessionSync(sessionConfig, localMachine);
@@ -50,7 +51,7 @@ export function App() {
         </p>
       </header>
       <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
-        <ConnectionStatus />
+        {!listenOnly && <ConnectionStatus />}
         <SessionBar
           connected={sessionConfig !== null}
           onConnect={setSessionConfig}
@@ -59,13 +60,19 @@ export function App() {
         <TransportBar />
         <AudioPanel />
         <CueDeck />
-        <MachinePanel machine={localMachine} actions={localMachineActions} />
+        {!listenOnly && (
+          <MachinePanel machine={localMachine} actions={localMachineActions} />
+        )}
         {peerMachines.map((machine) => (
           <MachinePanel key={machine.id} machine={machine} />
         ))}
-        <PresetLibrary />
-        <DeviceSetup />
-        <SysexLab />
+        {!listenOnly && (
+          <>
+            <PresetLibrary />
+            <DeviceSetup />
+            <SysexLab />
+          </>
+        )}
       </main>
     </div>
   );

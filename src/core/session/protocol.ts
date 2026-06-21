@@ -11,6 +11,8 @@ export interface PeerInfo {
   name: string;
   /** Palette colour for this player across the cockpit. */
   color?: string;
+  /** Listener (no machine): never elected host. */
+  listener?: boolean;
 }
 
 export interface PeerState {

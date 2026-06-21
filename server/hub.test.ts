@@ -113,6 +113,31 @@ describe('SessionHub', () => {
     expect(promote?.msg).toMatchObject({ t: 'peer-join', peer: { id: 'b', isHost: true } });
   });
 
+  it('never makes a listener host; the first real player gets it', () => {
+    let t = 0;
+    const hub = new SessionHub(() => ++t);
+    // A listener joins first.
+    hub.handle('L', { t: 'join', room: 'jam', info: { name: 'Listener', listener: true } });
+    // Then a player joins → the player is host, not the listener.
+    const out = hub.handle('p', { t: 'join', room: 'jam', info: { name: 'P' } });
+    const welcome = to(out, 'p');
+    expect(welcome?.msg.t === 'welcome' && welcome.msg.peers.find((x) => x.id === 'L')?.isHost).toBe(false);
+    // The player's own state is host (seen by the listener's peer-join notice).
+    const notice = to(out, 'L');
+    expect(notice?.msg).toMatchObject({ t: 'peer-join', peer: { id: 'p', isHost: true } });
+  });
+
+  it('promotes the oldest non-listener when the host leaves', () => {
+    let t = 0;
+    const hub = new SessionHub(() => ++t);
+    hub.handle('p1', { t: 'join', room: 'jam', info: { name: 'P1' } }); // host
+    hub.handle('L', { t: 'join', room: 'jam', info: { name: 'L', listener: true } });
+    hub.handle('p2', { t: 'join', room: 'jam', info: { name: 'P2' } });
+    const out = hub.disconnect('p1');
+    const promote = out.find((o) => o.msg.t === 'peer-join');
+    expect(promote?.msg).toMatchObject({ t: 'peer-join', peer: { id: 'p2', isHost: true } });
+  });
+
   it('ignores messages from unknown peers and empty rooms', () => {
     const hub = new SessionHub(() => 1);
     expect(hub.handle('ghost', { t: 'device', snapshot: snap(1) })).toEqual([]);

@@ -47,7 +47,8 @@ export function dispatchServerMessage(msg: ServerMessage): void {
       useCueStore.getState().add({ cue: msg.cue, peer: msg.peer });
       break;
     case 'pong':
-      // Latency estimation lands with the transport UI.
+      // RTT to the session server: now minus the ts we sent (perf-clock domain).
+      store.setLatency(Math.round(performance.now() - msg.ts));
       break;
   }
 }

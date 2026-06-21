@@ -28,10 +28,13 @@ interface SessionStore {
   transportAt: number | null;
   /** WebSocket link health, surfaced to the user. */
   linkStatus: LinkStatus;
+  /** Round-trip latency to the session server (ms), or null until measured. */
+  latencyMs: number | null;
 
   setSelf: (id: string, info: PeerInfo) => void;
   setHostId: (id: PeerId | null) => void;
   setLinkStatus: (status: LinkStatus) => void;
+  setLatency: (ms: number) => void;
   addPeer: (peer: PeerState) => void;
   removePeer: (id: string) => void;
   /** Apply a peer's snapshot, dropping stale (out-of-order) frames. */
@@ -49,12 +52,15 @@ export const useSessionStore = create<SessionStore>((set) => ({
   transport: null,
   transportAt: null,
   linkStatus: 'idle',
+  latencyMs: null,
 
   setSelf: (id, info) => set({ self: { id, info } }),
 
   setHostId: (hostId) => set({ hostId }),
 
   setLinkStatus: (linkStatus) => set({ linkStatus }),
+
+  setLatency: (latencyMs) => set({ latencyMs }),
 
   // Upsert: a peer-join can re-announce an existing peer (e.g. host promotion);
   // merge so we don't drop a device snapshot we already hold.
@@ -86,6 +92,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
       hostId: null,
       transport: null,
       transportAt: null,
+      latencyMs: null,
     }),
 
   reset: () =>
@@ -96,5 +103,6 @@ export const useSessionStore = create<SessionStore>((set) => ({
       transport: null,
       transportAt: null,
       linkStatus: 'idle',
+      latencyMs: null,
     }),
 }));

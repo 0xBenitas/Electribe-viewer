@@ -16,12 +16,16 @@ export interface SessionConnectConfig {
   url: string;
   room: string;
   name: string;
+  /** Join without a machine: don't broadcast a device, never become host. */
+  listenOnly?: boolean;
 }
 
 /** How often we broadcast our machine state (ms). */
 const SNAPSHOT_INTERVAL_MS = 150;
 /** How often the host broadcasts the shared transport (ms). */
 const TRANSPORT_INTERVAL_MS = 200;
+/** How often we ping the server to measure latency (ms). */
+const PING_INTERVAL_MS = 3000;
 
 export function useSessionSync(
   config: SessionConnectConfig | null,
@@ -33,11 +37,12 @@ export function useSessionSync(
   useEffect(() => {
     if (!config) return;
 
-    useSessionStore.getState().setSelf('', { name: config.name });
+    const listenOnly = config.listenOnly ?? false;
+    useSessionStore.getState().setSelf('', { name: config.name, listener: listenOnly });
     const client = new SessionClient({
       url: config.url,
       room: config.room,
-      info: { name: config.name },
+      info: { name: config.name, listener: listenOnly },
       onMessage: dispatchServerMessage,
       onStatus: (status) => {
         // Surface link health; on an unexpected drop, shed now-stale peers.
@@ -48,16 +53,23 @@ export function useSessionSync(
     client.connect();
     setActiveClient(client);
 
+    // A listener has no machine to replicate.
     let lastKey = '';
-    const deviceTimer = setInterval(() => {
-      // Key off the actual wire payload (minus its timestamp) so UI-only changes
-      // (custom name/colour) never trigger an identical broadcast.
-      const snapshot = machineToSnapshot(machineRef.current, 0);
-      const key = JSON.stringify(snapshot);
-      if (key === lastKey) return; // nothing on the wire changed
-      lastKey = key;
-      client.sendDevice({ ...snapshot, updatedAt: Date.now() });
-    }, SNAPSHOT_INTERVAL_MS);
+    const deviceTimer = listenOnly
+      ? null
+      : setInterval(() => {
+          // Key off the actual wire payload (minus its timestamp) so UI-only
+          // changes (custom name/colour) never trigger an identical broadcast.
+          const snapshot = machineToSnapshot(machineRef.current, 0);
+          const key = JSON.stringify(snapshot);
+          if (key === lastKey) return; // nothing on the wire changed
+          lastKey = key;
+          client.sendDevice({ ...snapshot, updatedAt: Date.now() });
+        }, SNAPSHOT_INTERVAL_MS);
+
+    const pingTimer = setInterval(() => {
+      client.send({ t: 'ping', ts: performance.now() });
+    }, PING_INTERVAL_MS);
 
     // Only the host broadcasts the shared tempo. While running, send every tick
     // (bar/beat are valid before BPM warms up). On stop, send ONE final frame so
@@ -77,8 +89,9 @@ export function useSessionSync(
     }, TRANSPORT_INTERVAL_MS);
 
     return () => {
-      clearInterval(deviceTimer);
+      if (deviceTimer) clearInterval(deviceTimer);
       clearInterval(transportTimer);
+      clearInterval(pingTimer);
       setActiveClient(null);
       client.disconnect();
       useSessionStore.getState().reset();

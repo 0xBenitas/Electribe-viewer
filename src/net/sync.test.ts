@@ -93,6 +93,14 @@ describe('dispatchServerMessage', () => {
     expect(useSessionStore.getState().peers.p1).toBeUndefined();
   });
 
+  it('computes latency from a pong', () => {
+    dispatchServerMessage({ t: 'pong', ts: performance.now() - 30, serverTs: 1 });
+    const latency = useSessionStore.getState().latencyMs;
+    expect(latency).not.toBeNull();
+    expect(latency!).toBeGreaterThanOrEqual(20);
+    expect(latency!).toBeLessThan(200);
+  });
+
   it('routes a cue into the cue store with its sender', () => {
     const cue = buildCue('drop', 7, { id: 'c1', now: 0 });
     dispatchServerMessage({ t: 'cue', peer: 'p2', cue });
