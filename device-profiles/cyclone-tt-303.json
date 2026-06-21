@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "cyclone-tt-303",
+  "status": "draft",
+  "identity": {
+    "manufacturer": "Cyclone Analogic",
+    "model": "TT-303 Bass Bot",
+    "webMidiPortNames": ["tt-303"]
+  },
+  "midi": {
+    "channelModel": "global",
+    "sysex": false,
+    "ccParams": []
+  },
+  "clock": {
+    "canBeMaster": true,
+    "canBeSlave": true,
+    "transport": ["start", "stop", "continue"],
+    "songPosition": false
+  },
+  "tracks": {
+    "count": 1,
+    "label": "pattern"
+  },
+  "audio": {
+    "outputs": [{ "name": "Out", "channels": "mono" }]
+  },
+  "telemetry": {
+    "reportsActivePart": false,
+    "reportsPatternDump": false,
+    "reportsGlobalDump": false,
+    "reportsCcTweaks": true
+  }
+}

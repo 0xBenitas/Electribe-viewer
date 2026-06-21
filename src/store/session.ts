@@ -1,0 +1,108 @@
+// Session store — the multiplayer state (presence + replicated machines + the
+// host's shared transport). Singleton for the local client's view of one room.
+// Fed by the WebSocket layer (next phase); rendered via snapshotToMachine.
+
+import { create } from 'zustand';
+import {
+  isNewerSnapshot,
+  type DeviceSnapshot,
+} from '../core/session/snapshot.ts';
+import type {
+  PeerId,
+  PeerInfo,
+  PeerState,
+  TransportTick,
+} from '../core/session/protocol.ts';
+
+/** WebSocket link health for the current session. */
+export type LinkStatus = 'idle' | 'connecting' | 'open' | 'closed';
+
+interface SessionStore {
+  self: { id: string; info: PeerInfo } | null;
+  peers: Record<string, PeerState>;
+  /** Id of the peer that owns the shared BPM (§5), or null if none/unknown. */
+  hostId: PeerId | null;
+  /** Host's shared bar/beat/bpm, or null when no session/host. */
+  transport: TransportTick | null;
+  /** When `transport` was last updated (ms), for staleness; null if never. */
+  transportAt: number | null;
+  /** WebSocket link health, surfaced to the user. */
+  linkStatus: LinkStatus;
+  /** Round-trip latency to the session server (ms), or null until measured. */
+  latencyMs: number | null;
+
+  setSelf: (id: string, info: PeerInfo) => void;
+  setHostId: (id: PeerId | null) => void;
+  setLinkStatus: (status: LinkStatus) => void;
+  setLatency: (ms: number) => void;
+  addPeer: (peer: PeerState) => void;
+  removePeer: (id: string) => void;
+  /** Apply a peer's snapshot, dropping stale (out-of-order) frames. */
+  applySnapshot: (peerId: string, snapshot: DeviceSnapshot) => void;
+  setTransport: (transport: TransportTick | null) => void;
+  /** Socket dropped: mark closed and drop now-stale peers/transport (keep self). */
+  connectionLost: () => void;
+  reset: () => void;
+}
+
+export const useSessionStore = create<SessionStore>((set) => ({
+  self: null,
+  peers: {},
+  hostId: null,
+  transport: null,
+  transportAt: null,
+  linkStatus: 'idle',
+  latencyMs: null,
+
+  setSelf: (id, info) => set({ self: { id, info } }),
+
+  setHostId: (hostId) => set({ hostId }),
+
+  setLinkStatus: (linkStatus) => set({ linkStatus }),
+
+  setLatency: (latencyMs) => set({ latencyMs }),
+
+  // Upsert: a peer-join can re-announce an existing peer (e.g. host promotion);
+  // merge so we don't drop a device snapshot we already hold.
+  addPeer: (peer) =>
+    set((s) => ({ peers: { ...s.peers, [peer.id]: { ...s.peers[peer.id], ...peer } } })),
+
+  removePeer: (id) =>
+    set((s) => {
+      if (!(id in s.peers)) return {};
+      const peers = { ...s.peers };
+      delete peers[id];
+      return { peers };
+    }),
+
+  applySnapshot: (peerId, snapshot) =>
+    set((s) => {
+      const peer = s.peers[peerId];
+      if (!peer || !isNewerSnapshot(snapshot, peer.device)) return {};
+      return { peers: { ...s.peers, [peerId]: { ...peer, device: snapshot } } };
+    }),
+
+  setTransport: (transport) =>
+    set({ transport, transportAt: transport === null ? null : Date.now() }),
+
+  connectionLost: () =>
+    set({
+      linkStatus: 'closed',
+      peers: {},
+      hostId: null,
+      transport: null,
+      transportAt: null,
+      latencyMs: null,
+    }),
+
+  reset: () =>
+    set({
+      self: null,
+      peers: {},
+      hostId: null,
+      transport: null,
+      transportAt: null,
+      linkStatus: 'idle',
+      latencyMs: null,
+    }),
+}));

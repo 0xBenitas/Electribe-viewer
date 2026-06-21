@@ -14,24 +14,6 @@ export function partToSound(part: ParsedPart): PartSound {
   return sound;
 }
 
-/** Params « son » qui ne sont PAS pilotables par CC → recall via Pattern Write seulement. */
-export const SYSEX_ONLY_PARAMS = [
-  'oscType',
-  'voiceAssign',
-  'filterType',
-  'modType',
-  'ifxType',
-  'motionSeqMode',
-  'grooveType',
-  'grooveDepth',
-  'partPriority',
-  'lastStep',
-  'trgPadVelocity',
-  'scaleMode',
-  'egOn',
-  'mute',
-] as const;
-
 export interface CCRecallStep {
   param: CCParam;
   value: number;

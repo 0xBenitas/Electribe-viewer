@@ -28,7 +28,10 @@ export type ConnectionState =
   | {
       status: 'connected';
       port: PortInfo;
-      identity: DeviceIdentity;
+      /** Korg Identity Reply, or null for machines that don't answer / aren't Korg. */
+      identity: DeviceIdentity | null;
+      /** Resolved Device Profile id, or null for an unknown machine. */
+      profileId: string | null;
       lastSeen: number;
     }
   | { status: 'stale'; port: PortInfo; lastSeen: number }

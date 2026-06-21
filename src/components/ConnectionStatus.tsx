@@ -1,6 +1,7 @@
 import { useConnectionStore } from '../store/connection.ts';
 import { connectMidi, selectMidiPort } from '../midi/bridge.ts';
 import { formatFirmware } from '../midi/deviceInquiry.ts';
+import { getProfile } from '../core/profiles/registry.ts';
 
 const DOT: Record<string, string> = {
   connected: 'bg-green',
@@ -32,8 +33,11 @@ export function ConnectionStatus() {
         <div className="text-sm">
           <div className="font-bold text-blue">{state.port.name}</div>
           <div className="text-text-dim">
-            Korg electribe · firmware {formatFirmware(state.identity)} · canal{' '}
-            {state.identity.globalChannel + 1}
+            {state.profileId
+              ? (getProfile(state.profileId)?.identity.model ?? state.profileId)
+              : 'Machine non reconnue · setup guidé'}
+            {state.identity &&
+              ` · firmware ${formatFirmware(state.identity)} · canal ${state.identity.globalChannel + 1}`}
           </div>
         </div>
       )}
@@ -47,7 +51,7 @@ export function ConnectionStatus() {
           )}
           {state.status === 'no-device' && (
             <p className="mb-2 text-sm text-text-dim">
-              Aucun Electribe détecté. Branche-le et réessaie.
+              Aucune machine MIDI détectée. Branche-la et réessaie.
             </p>
           )}
           <button

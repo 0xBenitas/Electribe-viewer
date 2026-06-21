@@ -1,36 +1,26 @@
-import type { PartMeta } from '../store/parts.ts';
-import { partColor } from '../lib/colors.ts';
+import type { MachinePart } from '../model/machine.ts';
 import { oscByRaw } from '../data/oscillators.ts';
 
 interface PartTileProps {
-  part: PartMeta;
-  oscType: number | null;
-  muted: boolean;
+  part: MachinePart;
   selected: boolean;
   active: boolean;
-  onSelect: (id: number) => void;
+  /** Omitted = not selectable (e.g. a remote peer's machine). */
+  onSelect?: (id: number) => void;
 }
 
-export function PartTile({
-  part,
-  oscType,
-  muted,
-  selected,
-  active,
-  onSelect,
-}: PartTileProps) {
-  const color = part.customColor ?? partColor(part.id);
-  const osc = oscType !== null ? oscByRaw(oscType) : null;
+export function PartTile({ part, selected, active, onSelect }: PartTileProps) {
+  const osc = part.oscType !== null ? oscByRaw(part.oscType) : null;
   const label = part.customName ?? osc?.name ?? '—';
   return (
     <button
-      onClick={() => onSelect(part.id)}
+      onClick={() => onSelect?.(part.id)}
       title={osc ? `${osc.name} — ${osc.category}` : `Part ${part.id}`}
       className={`relative flex aspect-square flex-col justify-between overflow-hidden rounded-lg border p-2 text-left transition-all ${
         selected
           ? 'border-blue bg-bg-3 ring-1 ring-blue'
           : 'border-line bg-bg-2 hover:border-line-bright'
-      } ${muted ? 'opacity-40' : ''}`}
+      } ${part.muted ? 'opacity-40' : ''}`}
     >
       <div className="flex items-center justify-between">
         <span
@@ -42,7 +32,7 @@ export function PartTile({
         </span>
         <span
           className="size-2.5 shrink-0 rounded-full"
-          style={{ backgroundColor: color }}
+          style={{ backgroundColor: part.color }}
         />
       </div>
 
@@ -57,7 +47,7 @@ export function PartTile({
         )}
       </div>
 
-      {muted && (
+      {part.muted && (
         <span className="absolute bottom-1 right-1 text-[9px] font-bold text-red">
           MUTE
         </span>

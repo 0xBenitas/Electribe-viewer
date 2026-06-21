@@ -3,6 +3,9 @@
 
 import { MIDIClient, type MidiMessage } from './client.ts';
 import { CCThrottler } from './throttle.ts';
+import { MidiClock } from '../core/clock/midiClock.ts';
+import type { ClockSnapshot } from '../core/clock/types.ts';
+import { getProfile, supportsRichEditor } from '../core/profiles/registry.ts';
 import {
   CC_MAP,
   PATTERN_LEVEL_PARAMS,
@@ -37,20 +40,50 @@ import { useSysexStore } from '../store/sysex.ts';
 let client: MIDIClient | null = null;
 const throttler = new CCThrottler((msg) => client?.send(msg));
 
+/** Profile of the connected machine; gates Electribe-specific SysEx/CC handling. */
+let activeProfileId: string | null = null;
+
+/** Live MIDI clock, fed from realtime messages (Phase 1c). */
+const clock = new MidiClock();
+
+/** Current shared-tempo snapshot (BPM + bar position). */
+export function clockSnapshot(now?: number): ClockSnapshot {
+  return clock.snapshot(now);
+}
+
+/** MIDI realtime + Song Position statuses routed to the clock. */
+const CLOCK_STATUS = new Set([0xf8, 0xfa, 0xfb, 0xfc, 0xf2]);
+
 function onState(state: ConnectionState): void {
   useConnectionStore.setState({ state });
   if (state.status === 'connected') {
+    activeProfileId = state.profileId;
     throttler.start();
-    const gc = state.identity.globalChannel;
-    // Knob Mode awareness (spec §6.9) + hydrate the 16 parts (spec §1.2).
-    client?.send(buildGlobalDumpRequest(gc));
-    client?.send(buildCurrentPatternDumpRequest(gc));
+    const profile = state.profileId ? getProfile(state.profileId) : null;
+    // Electribe only: request Knob Mode (spec §6.9) + hydrate the 16 parts
+    // (spec §1.2). Needs the global channel from the Korg Identity Reply.
+    if (profile?.telemetry.reportsPatternDump && state.identity) {
+      const gc = state.identity.globalChannel;
+      client?.send(buildGlobalDumpRequest(gc));
+      client?.send(buildCurrentPatternDumpRequest(gc));
+    }
   } else {
+    activeProfileId = null;
     throttler.reset();
+    clock.reset();
   }
 }
 
-function onMessage({ channel, data }: MidiMessage): void {
+function onMessage({ channel, data, timeStamp }: MidiMessage): void {
+  if (CLOCK_STATUS.has(data[0]!)) {
+    clock.feed(data, timeStamp);
+    return;
+  }
+  // Beyond the clock, the SysEx/CC handling below is Electribe-specific
+  // (pattern hydration + ADR-001 active-part CC mirror). Other machines still
+  // get tempo, presence, cues and audio — just not the rich editor.
+  if (!supportsRichEditor(activeProfileId)) return;
+
   if (data[0] === 0xf0) {
     const fn = getSysExFunction(data);
     if (fn === SYSEX_FN.GLOBAL_DUMP) {
@@ -106,6 +139,11 @@ export function selectMidiPort(key: string): Promise<void> {
   return client?.selectByKey(key) ?? Promise.resolve();
 }
 
+/** Names of MIDI ports currently visible (for the guided device setup). */
+export function connectedPortNames(): string[] {
+  return client?.getPairNames() ?? [];
+}
+
 /** Send a mapped CC to the active part's channel (ADR-001). */
 export function sendParam(param: CCParam, value: number): void {
   const parts = usePartsStore.getState();
@@ -117,7 +155,9 @@ export function sendParam(param: CCParam, value: number): void {
 
 function connectedChannel(): number | null {
   const st = useConnectionStore.getState().state;
-  return st.status === 'connected' ? st.identity.globalChannel : null;
+  return st.status === 'connected' && st.identity
+    ? st.identity.globalChannel
+    : null;
 }
 
 /**

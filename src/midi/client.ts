@@ -3,7 +3,8 @@ import {
   parseDeviceInquiryReply,
   type DeviceIdentity,
 } from './deviceInquiry.ts';
-import { findElectribePairs, pairPorts, toPortInfo } from './ports.ts';
+import { pairPorts, toPortInfo } from './ports.ts';
+import { matchProfileByPortName, resolveProfile } from '../core/profiles/registry.ts';
 import type { ConnectionState, PortPair } from './types.ts';
 
 const INQUIRY_TIMEOUT_MS = 1000;
@@ -12,6 +13,8 @@ export interface MidiMessage {
   /** Low nibble of the status byte + 1, i.e. the 1-based MIDI channel. */
   channel: number;
   data: Uint8Array;
+  /** Event timestamp (DOMHighResTimeStamp, ms) — same domain as performance.now(). */
+  timeStamp: number;
 }
 
 export interface MIDIClientCallbacks {
@@ -56,22 +59,22 @@ export class MIDIClient {
     this.cb.onState({ status: 'scanning' });
 
     const pairs = pairPorts(this.access);
-    const electribes = findElectribePairs(pairs);
-    const candidates = electribes.length > 0 ? electribes : pairs;
-
-    if (candidates.length === 0) {
+    if (pairs.length === 0) {
       this.cb.onState({ status: 'no-device' });
       return;
     }
-    if (candidates.length > 1 && electribes.length !== 1) {
-      this.cb.onState({
-        status: 'manual-select',
-        candidates: candidates.map((p) => toPortInfo(p.output)),
-      });
+    // Prefer ports that match a known Device Profile; otherwise offer them all.
+    const known = pairs.filter((p) => matchProfileByPortName(p.name) !== null);
+    const candidates = known.length > 0 ? known : pairs;
+
+    if (candidates.length === 1) {
+      await this.openAndConnect(candidates[0]!);
       return;
     }
-
-    await this.openAndInquire(candidates[0]!);
+    this.cb.onState({
+      status: 'manual-select',
+      candidates: candidates.map((p) => toPortInfo(p.output)),
+    });
   }
 
   async selectByKey(key: string): Promise<void> {
@@ -81,10 +84,10 @@ export class MIDIClient {
       this.cb.onState({ status: 'no-device' });
       return;
     }
-    await this.openAndInquire(pair);
+    await this.openAndConnect(pair);
   }
 
-  private async openAndInquire(pair: PortPair): Promise<void> {
+  private async openAndConnect(pair: PortPair): Promise<void> {
     this.pair = pair;
     const port = toPortInfo(pair.output);
     this.cb.onState({ status: 'connecting', port });
@@ -95,19 +98,16 @@ export class MIDIClient {
 
     this.cb.onState({ status: 'inquiring', port });
 
+    // Identity is best-effort: Korg replies (gives us the global channel), other
+    // machines may not — we still connect, resolving the profile by port name.
     const identity = await this.awaitIdentity(pair);
-    if (!identity) {
-      this.cb.onState({
-        status: 'error',
-        message: 'No Identity Reply from device (timeout).',
-      });
-      return;
-    }
     this.identity = identity;
+    const profile = resolveProfile(port.name, identity);
     this.cb.onState({
       status: 'connected',
       port,
       identity,
+      profileId: profile?.id ?? null,
       lastSeen: Date.now(),
     });
   }
@@ -148,7 +148,11 @@ export class MIDIClient {
       }
     }
 
-    this.cb.onMessage?.({ channel: (data[0]! & 0x0f) + 1, data });
+    this.cb.onMessage?.({
+      channel: (data[0]! & 0x0f) + 1,
+      data,
+      timeStamp: e.timeStamp,
+    });
   }
 
   private async rescan(): Promise<void> {
@@ -176,6 +180,12 @@ export class MIDIClient {
 
   getIdentity(): DeviceIdentity | null {
     return this.identity;
+  }
+
+  /** Names of all paired MIDI ports currently visible. */
+  getPairNames(): string[] {
+    if (!this.access) return [];
+    return pairPorts(this.access).map((p) => p.name);
   }
 
   dispose(): void {

@@ -1,7 +1,5 @@
 import type { PortInfo, PortPair } from './types.ts';
 
-const ELECTRIBE_NAME = /electribe/i;
-
 export function toPortInfo(port: MIDIPort): PortInfo {
   return {
     id: port.id,
@@ -35,8 +33,4 @@ export function pairPorts(access: MIDIAccess): PortPair[] {
     pairs.push({ key: name, name, input, output });
   }
   return pairs;
-}
-
-export function findElectribePairs(pairs: PortPair[]): PortPair[] {
-  return pairs.filter((p) => ELECTRIBE_NAME.test(p.name));
 }

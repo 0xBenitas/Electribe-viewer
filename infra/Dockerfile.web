@@ -1,0 +1,18 @@
+# Build the cockpit (Vite inlines VITE_* at build time) then serve it with Caddy.
+# Build context = repo root.
+
+FROM node:22-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+# Vite needs these at build time (they are baked into the bundle).
+ARG VITE_SESSION_URL
+ARG VITE_NINJAM_HOST
+ENV VITE_SESSION_URL=$VITE_SESSION_URL
+ENV VITE_NINJAM_HOST=$VITE_NINJAM_HOST
+RUN npm run build
+
+FROM caddy:2-alpine
+COPY infra/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/dist /srv

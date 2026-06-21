@@ -5,7 +5,7 @@ export function BrowserCheck() {
         Navigateur non supporté
       </h1>
       <p className="text-text-dim">
-        EMX.PILOT a besoin de la Web MIDI API, disponible sur Chrome, Edge,
+        JAMBOREE a besoin de la Web MIDI API, disponible sur Chrome, Edge,
         Brave ou Opera. Safari et Firefox ne sont pas supportés.
       </p>
     </div>

@@ -1,0 +1,16 @@
+# Caddy auto-provisions TLS for {$DOMAIN}. Serves the cockpit SPA and proxies the
+# WebSocket session relay at /ws (the client connects to wss://DOMAIN/ws).
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	handle /ws* {
+		reverse_proxy ws:8787
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
