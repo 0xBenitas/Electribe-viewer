@@ -50,7 +50,7 @@ src/styles/    Tailwind + palette
 server/        relais de session WebSocket (hub pur + adaptateur ws)
 device-profiles/ profils JSON versionnés (un par machine)
 infra/         docker-compose + Caddy + NINJAM
-docs/          vision (ENSEMBLE.md), décisions (DECISIONS.md), déploiement (DEPLOY.md), backlog (BACKLOG.md)
+docs/          vision (ENSEMBLE.md), décisions (DECISIONS.md), déploiement (DEPLOY.md), backlog (BACKLOG.md), design (DESIGN.md)
 ```
 
 ## Browser support
