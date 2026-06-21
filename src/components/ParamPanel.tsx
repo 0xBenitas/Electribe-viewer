@@ -46,7 +46,7 @@ export function ParamPanel({
 
       {editable && activePartId === null && (
         <p className="text-xs text-yellow">
-          Part actif inconnu — tourne un knob sur la machine pour qu'EMX.PILOT
+          Part actif inconnu — tourne un knob sur la machine pour qu'ENSEMBLE
           détecte le part sélectionné (ADR-001).
         </p>
       )}

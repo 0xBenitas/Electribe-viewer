@@ -1,7 +1,7 @@
 // DeviceSnapshot — the replicated, network-friendly view of one machine.
 //
 // This is THE merge seam. Locally a machine is driven by Web MIDI and shown by
-// the editor (the EMX.PILOT panel). In a session, each peer serialises their
+// the editor panel. In a session, each peer serialises their
 // machine into a DeviceSnapshot and broadcasts it; a remote peer's machine is
 // just a snapshot fed into the SAME UI components. Replication is read-only in
 // v1 (you see your friends' machines; you only drive your own).

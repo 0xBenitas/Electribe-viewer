@@ -1,79 +1,83 @@
-# EMX.PILOT
+# ENSEMBLE
 
-Web app companion pour Korg Electribe 2 (EMX2). Vue d'ensemble des 16 parts, bibliothèque de sound presets, catalogue de patterns avec metadata, setlist builder, big XY pad MFX. Local, offline-first, PWA.
+Outil de **jam collaboratif à distance** pour une crew de musique électronique
+hardware. Tu te connectes avec tes potes, tu **vois leurs machines** (parts, sons,
+réglages en direct), tu **pilotes la tienne**, et vous **jouez calés au tempo**
+malgré la latence. En solo, c'est un éditeur/viewer pour ta machine, dans la même
+appli.
 
-> ⚠️ **Statut** : Phase 1 (Foundation) en cours — setup, MIDIClient, détection de connexion.
+> Issu d'EMX.PILOT (companion Korg Electribe 2), désormais fusionné en un seul
+> produit. Voir `docs/ENSEMBLE.md` (vision + roadmap) et `docs/DECISIONS.md`
+> (ADR-005).
 
-## Pourquoi cette app
+## Ce que ça fait
 
-L'EMX2 a un LCD 16 caractères qui force une navigation menu-par-menu. Cette app **complète** la machine sans la remplacer :
-
-- Vue d'ensemble simultanée des 16 parts sur grand écran
-- Bibliothèque de sound presets (la machine n'en a pas en natif)
-- Catalogue des 250 patterns avec metadata recherchable
-- Setlist builder avec warnings de transitions BPM
-- Big XY pad fullscreen pour MFX live
-- Backup local en IndexedDB
-
-La machine reste le moteur audio + séquenceur primaire + tactile. L'app est un panneau de commande externe + une mémoire externe.
-
-## Documentation
-
-- **`emx-pilot-spec-v0.3.md`** — cahier des charges complet
-- **`CLAUDE.md`** — instructions Claude Code
-- **`docs/`** — décisions, findings MIDI, questions ouvertes
+- **Voir / éditer sa machine** — vue d'ensemble des parts, sons, params temps réel
+  (le viewer devient le panneau par-machine).
+- **Voir les machines des potes** — réplication read-only de leur état en session.
+- **Tempo partagé** — l'hôte est la source de vérité ; position dans la mesure
+  affichée (le phare visuel).
+- **Cues non-verbaux calés à la mesure** — signaler « break / monte / coupe… » qui
+  atterrit proprement à la mesure suivante. Le différenciateur : le décalage d'une
+  mesure devient le médium du signal.
+- **Audio via NINJAM** — hors navigateur : chacun connecte son client natif
+  (Jamtaba / Reaper). ENSEMBLE orchestre le reste.
 
 ## Stack
 
-- Vite + React 19 + TypeScript (strict)
-- Tailwind CSS v4
-- Zustand (state)
-- Web MIDI API native
-- Vitest (unit) — Dexie.js / PWA à venir (Phases ultérieures)
+- Vite + React 19 + TypeScript (strict), Tailwind v4, Zustand, Dexie.
+- Web MIDI (détection machines + clock), Web USB (identification).
+- Serveur de session WebSocket (Node, `server/`), serveur audio NINJAM.
+- Self-host : Docker + Caddy (voir `docs/DEPLOY.md`).
+
+## Architecture (le joint de fusion)
+
+Web MIDI → `bridge` → stores → composants ; et réseau WS → `DeviceSnapshot` →
+**les mêmes composants**. Une machine locale (éditable) et celle d'un pair
+(read-only) sont rendues par le même read-model `Machine`.
+
+```
+src/core/      domaine agnostique : clock, profiles, transport, session
+src/model/     read-model Machine + adaptateurs + hooks (clock, sync)
+src/midi/      adaptateur Web MIDI (client, SysEx, CC)
+src/store/     état Zustand (connexion, parts, params, session, cues, clock)
+src/components/ UI cockpit (panels machine, transport, cues, audio, setup)
+src/net/       client WS + dispatch + diffusion
+server/        relais de session WebSocket (hub pur + adaptateur ws)
+device-profiles/ profils JSON versionnés (un par machine)
+infra/         docker-compose + Caddy + NINJAM
+docs/          vision (ENSEMBLE.md), décisions (DECISIONS.md), déploiement (DEPLOY.md)
+```
 
 ## Browser support
 
-Chrome / Edge / Brave / Opera (Web MIDI natif requis).
+Chrome / Edge / Brave / Opera (Web MIDI natif requis). Pas Safari ni Firefox.
+Contexte sécurisé exigé : `localhost` en dev, HTTPS en prod.
 
-Pas de support Safari ni Firefox.
+## Hardware
 
-## Hardware support
+Profils livrés : Korg Electribe 2 (vérifié), Elektron Model:Samples (draft).
+Machine inconnue → setup guidé qui génère un profil JSON contribuable.
 
-Korg Electribe 2 (EMX2 synth, version bleue). Pas l'ESX2 sampler ni les Electribes précédentes.
-
-## Setup
+## Setup (dev)
 
 ```sh
 npm install
-npm run dev        # serveur de dev (localhost, Web MIDI OK)
+npm run dev        # cockpit (localhost, Web MIDI OK)
+npm run server     # relais de session WebSocket (port 8787)
 ```
-
-> Web MIDI exige un contexte sécurisé : `localhost` en dev, HTTPS en prod.
-
-### Scripts
 
 | Script | Rôle |
 |---|---|
 | `npm run dev` | Serveur de dev Vite |
+| `npm run server` | Relais de session WS (tsx watch) |
 | `npm run build` | Typecheck + build production |
-| `npm run typecheck` | `tsc -b` sans émettre |
+| `npm run typecheck` | `tsc` (app + tests + serveur) |
 | `npm test` | Tests unitaires Vitest |
 | `npm run lint` | ESLint |
-| `npm run format` | Prettier |
 
-### Structure
-
-```
-src/
-├── midi/          # MIDIClient, SysEx envelope, Device Inquiry, encodage, ports
-├── store/         # état Zustand (connexion)
-├── components/    # BrowserCheck, PermissionPrompt, ConnectionStatus, MultiTabGuard
-├── lib/           # multi-tab guard (BroadcastChannel)
-└── styles/        # Tailwind + palette
-tests/fixtures/    # captures MIDI réelles (pattern dump)
-tools/             # midi-probe.html (validation Phase 0)
-```
+Déploiement self-host : voir `docs/DEPLOY.md`.
 
 ## License
 
-À définir.
+MIT (voir `LICENSE`).

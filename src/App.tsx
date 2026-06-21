@@ -43,9 +43,11 @@ export function App() {
       <MultiTabGuard />
       <header className="border-b border-line px-6 py-4">
         <h1 className="text-xl font-bold tracking-wide text-blue">
-          EMX<span className="text-orange">.</span>PILOT
+          ENSEMBLE
         </h1>
-        <p className="text-xs text-text-muted">Companion pour Korg Electribe 2</p>
+        <p className="text-xs text-text-muted">
+          Jam collaboratif à distance · machines hardware
+        </p>
       </header>
       <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
         <ConnectionStatus />

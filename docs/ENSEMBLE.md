@@ -59,7 +59,8 @@ réseau WS ──► DeviceSnapshot ─┘   (même UI rend local OU distant)
 | 2c | Diffusion `DeviceSnapshot` (hôte→pairs) + rendu des machines des pairs | 🟩 fait (`useSessionSync`, `usePeerMachines`) |
 | 3 | Cues non-verbaux calés à la mesure (le différenciateur) | 🟩 fait (`CueDeck`, store cues, relais serveur) |
 | 4 | (R&D, optionnel) Audio dans le navigateur — hors chemin critique | ⬜ |
-| — | Étape structurelle : monorepo (`apps/web`, `apps/ws-server`, `packages/midi`) + rename ENSEMBLE | ⬜ à faire |
+| — | Rename EMX.PILOT → ENSEMBLE | 🟩 fait |
+| — | Monorepo (`apps/`/`packages/`) | ⛔ écarté : sur-ingénierie pour 1 app + 1 petit serveur ; `src/core` donne déjà la séparation. À reconsidérer si 2ᵉ app / déploiement indépendant. |
 
 ## Serveur de session
 
