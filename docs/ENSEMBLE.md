@@ -54,7 +54,7 @@ réseau WS ──► DeviceSnapshot ─┘   (même UI rend local OU distant)
 | 1a | Lecture clock MIDI → BPM + position mesure (module pur testé) | 🟩 fait (`src/core/clock`) |
 | 1b | Serveur WS (relais présence/BPM/snapshots/cues) + client + présence | 🟩 fait (`server/`, `src/net/`) |
 | 1c | Clock live (`bridge` feed `MidiClock`) + diffusion du transport par l'hôte + phare BPM/mesure | 🟩 fait (`useClock`, `TransportBar`) |
-| 2 | Device Profiles : format + détection + UI capability-driven + setup machine inconnue | 🟨 socle posé (types, registry, 2 profils, tests) |
+| 2 | Device Profiles : format + détection + setup machine inconnue (→ JSON contribuable) | 🟩 fait (`registry`, 2 profils, `DeviceSetup`) — UI capability-driven hors-Electribe liée à la généralisation de la connexion |
 | 2b | **Fusion viewer** : read-model `Machine` + adaptateurs snapshot + composants pilotés par le read-model (local ou distant) | 🟩 fait (`src/model`, composants migrés) |
 | 2c | Diffusion `DeviceSnapshot` (hôte→pairs) + rendu des machines des pairs | 🟩 fait (`useSessionSync`, `usePeerMachines`) |
 | 3 | Cues non-verbaux calés à la mesure (le différenciateur) | 🟩 fait (`CueDeck`, store cues, relais serveur) |
@@ -75,8 +75,9 @@ Process Node autonome (`server/`), relais fan-out pur :
 
 ## Ce qui reste explicitement à construire (neuf)
 
-- Setup guidé d'une machine inconnue → génération d'un nouveau Device Profile.
 - Étape structurelle : monorepo + rename ENSEMBLE.
+- Généralisation de la connexion au-delà de l'Electribe (auto-détecter une machine
+  inconnue en live → proposer le setup guidé ; UI capability-driven par profil).
 - Validation hardware de la clock Electribe (émission `0xF8`/transport) + de l'audio
   NINJAM bout-en-bout (recette Phase 0 dans `docs/DEPLOY.md`).
 

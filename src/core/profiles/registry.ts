@@ -42,3 +42,8 @@ export function resolveProfile(
 export function getProfile(id: string): DeviceProfile | null {
   return PROFILES.find((p) => p.id === id) ?? null;
 }
+
+/** Whether a Web MIDI port name matches any known profile. */
+export function isKnownPortName(portName: string): boolean {
+  return matchProfileByPortName(portName) !== null;
+}

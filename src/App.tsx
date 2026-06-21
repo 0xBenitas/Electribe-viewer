@@ -18,6 +18,7 @@ import { AudioPanel } from './components/AudioPanel.tsx';
 import { CueDeck } from './components/CueDeck.tsx';
 import { MachinePanel } from './components/MachinePanel.tsx';
 import { PresetLibrary } from './components/PresetLibrary.tsx';
+import { DeviceSetup } from './components/DeviceSetup.tsx';
 import { SysexLab } from './components/SysexLab.tsx';
 
 export function App() {
@@ -61,6 +62,7 @@ export function App() {
           <MachinePanel key={machine.id} machine={machine} />
         ))}
         <PresetLibrary />
+        <DeviceSetup />
         <SysexLab />
       </main>
     </div>

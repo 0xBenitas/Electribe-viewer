@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   PROFILES,
   getProfile,
+  isKnownPortName,
   matchProfileByPortName,
   resolveProfile,
 } from './registry.ts';
@@ -28,6 +29,8 @@ describe('device profile registry', () => {
   it('returns null for an unknown machine (→ guided setup)', () => {
     expect(matchProfileByPortName('Mystery Synth 9000')).toBeNull();
     expect(resolveProfile('Mystery Synth 9000')).toBeNull();
+    expect(isKnownPortName('Mystery Synth 9000')).toBe(false);
+    expect(isKnownPortName('Electribe 2')).toBe(true);
   });
 
   it('falls back to the Electribe profile from a parsed SysEx identity', () => {

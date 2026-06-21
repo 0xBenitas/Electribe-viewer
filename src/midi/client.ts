@@ -184,6 +184,12 @@ export class MIDIClient {
     return this.identity;
   }
 
+  /** Names of all paired MIDI ports currently visible. */
+  getPairNames(): string[] {
+    if (!this.access) return [];
+    return pairPorts(this.access).map((p) => p.name);
+  }
+
   dispose(): void {
     if (this.pair) this.pair.input.onmidimessage = null;
     if (this.access) this.access.onstatechange = null;

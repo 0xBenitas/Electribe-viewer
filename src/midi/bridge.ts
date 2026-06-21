@@ -125,6 +125,11 @@ export function selectMidiPort(key: string): Promise<void> {
   return client?.selectByKey(key) ?? Promise.resolve();
 }
 
+/** Names of MIDI ports currently visible (for the guided device setup). */
+export function connectedPortNames(): string[] {
+  return client?.getPairNames() ?? [];
+}
+
 /** Send a mapped CC to the active part's channel (ADR-001). */
 export function sendParam(param: CCParam, value: number): void {
   const parts = usePartsStore.getState();
