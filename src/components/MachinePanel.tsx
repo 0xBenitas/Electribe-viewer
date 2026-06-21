@@ -1,4 +1,5 @@
 import type { Machine, MachineActions } from '../model/machine.ts';
+import { getProfile } from '../core/profiles/registry.ts';
 import { KnobModeBadge } from './KnobModeBadge.tsx';
 import { PatternInfo } from './PatternInfo.tsx';
 import { PartGrid } from './PartGrid.tsx';
@@ -13,14 +14,11 @@ interface MachinePanelProps {
 
 /**
  * Renders one machine — local (editable) or a remote peer's (read-only) — from
- * the Machine read-model. The same component for both is the whole point of the
- * fusion: a remote panel is just a snapshot-fed Machine with no actions.
+ * the Machine read-model. Capability-driven: the rich per-part editor for
+ * machines that expose it (Electribe), a lite panel otherwise (the machine still
+ * takes part in tempo, presence, cues and audio).
  */
 export function MachinePanel({ machine, actions }: MachinePanelProps) {
-  const selectedPart =
-    machine.parts.find((p) => p.id === machine.selectedPartId) ??
-    machine.parts[0];
-
   return (
     <section className="flex flex-col gap-4 rounded-lg border border-line p-4">
       <header className="flex items-baseline gap-2">
@@ -35,6 +33,23 @@ export function MachinePanel({ machine, actions }: MachinePanelProps) {
           </span>
         )}
       </header>
+
+      {machine.richEditor ? (
+        <Editor machine={machine} actions={actions} />
+      ) : (
+        <LitePanel machine={machine} />
+      )}
+    </section>
+  );
+}
+
+function Editor({ machine, actions }: MachinePanelProps) {
+  const selectedPart =
+    machine.parts.find((p) => p.id === machine.selectedPartId) ??
+    machine.parts[0];
+
+  return (
+    <>
       {machine.editable && <KnobModeBadge knobMode={machine.knobMode} />}
       <PatternInfo pattern={machine.pattern} />
       <PartGrid
@@ -60,6 +75,32 @@ export function MachinePanel({ machine, actions }: MachinePanelProps) {
           onSetParam={actions?.setParam}
         />
       </div>
-    </section>
+    </>
+  );
+}
+
+function LitePanel({ machine }: { machine: Machine }) {
+  const profile = machine.profileId ? getProfile(machine.profileId) : null;
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-line bg-bg-3 p-3 text-sm">
+      {profile ? (
+        <p className="text-text-dim">
+          {profile.tracks.count} {profile.tracks.label}
+          {profile.status === 'draft' && (
+            <span className="ml-2 text-[10px] uppercase tracking-wide text-yellow">
+              profil draft
+            </span>
+          )}
+        </p>
+      ) : (
+        <p className="text-text-dim">
+          Machine non reconnue — décris-la via « Ajouter une machine ».
+        </p>
+      )}
+      <p className="text-xs text-text-muted">
+        Édition détaillée non disponible pour ce profil. La machine participe au
+        tempo partagé, à la présence, aux cues et à l'audio.
+      </p>
+    </div>
   );
 }

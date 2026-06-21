@@ -7,6 +7,7 @@
 // (selection, label, custom colours) are re-derived on receive.
 
 import { partColor } from '../lib/colors.ts';
+import { supportsRichEditor } from '../core/profiles/registry.ts';
 import type { DeviceSnapshot } from '../core/session/snapshot.ts';
 import type { PeerInfo } from '../core/session/protocol.ts';
 import type { Machine, MachinePart, ParamValues } from './machine.ts';
@@ -60,6 +61,7 @@ export function snapshotToMachine(
     model: snapshot.model,
     profileId: snapshot.profileId,
     editable: false,
+    richEditor: supportsRichEditor(snapshot.profileId),
     online: true,
     knobMode: null,
     activePartId: snapshot.activePart,

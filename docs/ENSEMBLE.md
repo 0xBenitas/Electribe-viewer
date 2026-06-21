@@ -54,7 +54,8 @@ réseau WS ──► DeviceSnapshot ─┘   (même UI rend local OU distant)
 | 1a | Lecture clock MIDI → BPM + position mesure (module pur testé) | 🟩 fait (`src/core/clock`) |
 | 1b | Serveur WS (relais présence/BPM/snapshots/cues) + client + présence | 🟩 fait (`server/`, `src/net/`) |
 | 1c | Clock live (`bridge` feed `MidiClock`) + diffusion du transport par l'hôte + phare BPM/mesure | 🟩 fait (`useClock`, `TransportBar`) |
-| 2 | Device Profiles : format + détection + setup machine inconnue (→ JSON contribuable) | 🟩 fait (`registry`, 2 profils, `DeviceSetup`) — UI capability-driven hors-Electribe liée à la généralisation de la connexion |
+| 2 | Device Profiles : format + détection + setup machine inconnue (→ JSON contribuable) | 🟩 fait (`registry`, 6 profils, `DeviceSetup`) |
+| 2d | Connexion généralisée : toute machine MIDI se connecte (inquiry best-effort), profil par nom de port, UI capability-driven (éditeur Electribe / cockpit lite) | 🟩 fait (`client`, `bridge`, `MachinePanel`) |
 | 2b | **Fusion viewer** : read-model `Machine` + adaptateurs snapshot + composants pilotés par le read-model (local ou distant) | 🟩 fait (`src/model`, composants migrés) |
 | 2c | Diffusion `DeviceSnapshot` (hôte→pairs) + rendu des machines des pairs | 🟩 fait (`useSessionSync`, `usePeerMachines`) |
 | 3 | Cues non-verbaux calés à la mesure (le différenciateur) | 🟩 fait (`CueDeck`, store cues, relais serveur) |
@@ -76,15 +77,14 @@ Process Node autonome (`server/`), relais fan-out pur :
 
 ## Ce qui reste explicitement à construire (neuf)
 
-- Étape structurelle : monorepo + rename ENSEMBLE.
-- Généralisation de la connexion au-delà de l'Electribe (auto-détecter une machine
-  inconnue en live → proposer le setup guidé ; UI capability-driven par profil).
-- Validation hardware de la clock Electribe (émission `0xF8`/transport) + de l'audio
-  NINJAM bout-en-bout (recette Phase 0 dans `docs/DEPLOY.md`).
+- Reverse-engineering SysEx par machine pour l'édition fine au-delà de l'Electribe
+  (chaque appareil = son format ; exige le hardware). Les autres machines ont
+  aujourd'hui le cockpit « lite » : tempo, présence, cues, audio.
+- Validation hardware : émission clock Electribe (`0xF8`/transport) + audio NINJAM
+  bout-en-bout (recette Phase 0 dans `docs/DEPLOY.md`).
+- (R&D, optionnel) Audio dans le navigateur — hors chemin critique.
 
 > Limite connue des cues : un pair (non-hôte) calcule `landAtBar` depuis sa mesure
 > partagée relayée (~200 ms de retard), donc l'atterrissage peut différer d'±1
-> mesure de la vue de l'hôte. Acceptable (signal volontairement « gros grain » à
-> la mesure) ; piste future = marge adaptative quand on est en fin de mesure.
-- Les **cues** non-verbaux (UI + émission `sendCue`, le contrat existe déjà).
-- UI cockpit : position dans la mesure (phare visuel) alimentée par le transport.
+> mesure de la vue de l'hôte. Acceptable (signal volontairement « gros grain ») ;
+> piste future = marge adaptative en fin de mesure.

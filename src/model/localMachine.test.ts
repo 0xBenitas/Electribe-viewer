@@ -62,6 +62,17 @@ describe('buildLocalMachine', () => {
     expect(m.model).toBe('Electribe 2 (EMX, synth)');
   });
 
+  it('flags richEditor only for profiles that expose it', () => {
+    expect(buildLocalMachine(baseInput()).richEditor).toBe(true);
+    expect(
+      buildLocalMachine(baseInput({ profileId: 'elektron-model-samples' }))
+        .richEditor,
+    ).toBe(false);
+    expect(buildLocalMachine(baseInput({ profileId: null })).richEditor).toBe(
+      false,
+    );
+  });
+
   it('reports online only when connected', () => {
     expect(buildLocalMachine(baseInput({ connectionStatus: 'scanning' })).online).toBe(false);
     expect(buildLocalMachine(baseInput({ connectionStatus: 'connected' })).online).toBe(true);

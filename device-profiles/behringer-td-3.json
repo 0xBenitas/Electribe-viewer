@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "behringer-td-3",
+  "status": "draft",
+  "identity": {
+    "manufacturer": "Behringer",
+    "model": "TD-3",
+    "variants": ["TD-3-MO"],
+    "webMidiPortNames": ["td-3"]
+  },
+  "midi": {
+    "channelModel": "global",
+    "sysex": true,
+    "ccParams": []
+  },
+  "clock": {
+    "canBeMaster": true,
+    "canBeSlave": true,
+    "transport": ["start", "stop", "continue"],
+    "songPosition": false
+  },
+  "tracks": {
+    "count": 1,
+    "label": "séquence"
+  },
+  "audio": {
+    "outputs": [{ "name": "Out", "channels": "mono" }]
+  },
+  "telemetry": {
+    "reportsActivePart": false,
+    "reportsPatternDump": false,
+    "reportsGlobalDump": false,
+    "reportsCcTweaks": true
+  }
+}

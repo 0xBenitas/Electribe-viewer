@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "elektron-model-cycles",
+  "status": "draft",
+  "identity": {
+    "manufacturer": "Elektron",
+    "model": "Model:Cycles",
+    "webMidiPortNames": ["model:cycles", "model cycles"]
+  },
+  "midi": {
+    "channelModel": "multi",
+    "sysex": true,
+    "ccParams": []
+  },
+  "clock": {
+    "canBeMaster": true,
+    "canBeSlave": true,
+    "transport": ["start", "stop", "continue"],
+    "songPosition": true
+  },
+  "tracks": {
+    "count": 6,
+    "label": "tracks"
+  },
+  "audio": {
+    "outputs": [{ "name": "Main L/R", "channels": "stereo" }]
+  },
+  "telemetry": {
+    "reportsActivePart": false,
+    "reportsPatternDump": false,
+    "reportsGlobalDump": false,
+    "reportsCcTweaks": true
+  }
+}

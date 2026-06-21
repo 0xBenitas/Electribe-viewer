@@ -41,6 +41,8 @@ export interface Machine {
   profileId: string | null;
   /** True only for the local machine; gates every edit path. */
   editable: boolean;
+  /** Profile exposes the rich per-part editor (Electribe); else a lite panel. */
+  richEditor: boolean;
   /** Connection up (local) / peer present (remote). */
   online: boolean;
   /** Local hardware knob mode; null for remote machines. */

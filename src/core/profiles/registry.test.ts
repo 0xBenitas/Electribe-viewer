@@ -5,6 +5,7 @@ import {
   isKnownPortName,
   matchProfileByPortName,
   resolveProfile,
+  supportsRichEditor,
 } from './registry.ts';
 
 describe('device profile registry', () => {
@@ -31,6 +32,24 @@ describe('device profile registry', () => {
     expect(resolveProfile('Mystery Synth 9000')).toBeNull();
     expect(isKnownPortName('Mystery Synth 9000')).toBe(false);
     expect(isKnownPortName('Electribe 2')).toBe(true);
+  });
+
+  it('detects the Elektron line and acid boxes by port name', () => {
+    expect(matchProfileByPortName('Elektron Digitakt')?.id).toBe(
+      'elektron-digitakt',
+    );
+    expect(matchProfileByPortName('Elektron Model:Cycles')?.id).toBe(
+      'elektron-model-cycles',
+    );
+    expect(matchProfileByPortName('Behringer TD-3')?.id).toBe('behringer-td-3');
+    expect(matchProfileByPortName('Roland TB-3 MIDI 1')?.id).toBe('roland-tb-3');
+  });
+
+  it('only the Electribe exposes the rich editor', () => {
+    expect(supportsRichEditor('korg-electribe-2')).toBe(true);
+    expect(supportsRichEditor('elektron-model-samples')).toBe(false);
+    expect(supportsRichEditor('behringer-td-3')).toBe(false);
+    expect(supportsRichEditor(null)).toBe(false);
   });
 
   it('falls back to the Electribe profile from a parsed SysEx identity', () => {

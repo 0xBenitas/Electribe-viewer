@@ -4,12 +4,20 @@
 
 import electribe2 from '../../../device-profiles/korg-electribe-2.json';
 import modelSamples from '../../../device-profiles/elektron-model-samples.json';
+import modelCycles from '../../../device-profiles/elektron-model-cycles.json';
+import digitakt from '../../../device-profiles/elektron-digitakt.json';
+import td3 from '../../../device-profiles/behringer-td-3.json';
+import tb3 from '../../../device-profiles/roland-tb-3.json';
 import type { DeviceProfile } from './types.ts';
 import type { DeviceIdentity } from '../../midi/deviceInquiry.ts';
 
 export const PROFILES: readonly DeviceProfile[] = [
   electribe2 as DeviceProfile,
   modelSamples as DeviceProfile,
+  modelCycles as DeviceProfile,
+  digitakt as DeviceProfile,
+  td3 as DeviceProfile,
+  tb3 as DeviceProfile,
 ];
 
 /** Find a profile whose port-name matchers are a substring of `portName`. */
@@ -46,4 +54,14 @@ export function getProfile(id: string): DeviceProfile | null {
 /** Whether a Web MIDI port name matches any known profile. */
 export function isKnownPortName(portName: string): boolean {
   return matchProfileByPortName(portName) !== null;
+}
+
+/**
+ * Whether a profile exposes the rich per-part editor (full SysEx telemetry).
+ * Only the Electribe today; other machines get the lite cockpit (tempo,
+ * presence, cues, audio) until their SysEx is reverse-engineered.
+ */
+export function supportsRichEditor(profileId: string | null): boolean {
+  const profile = profileId ? getProfile(profileId) : null;
+  return profile?.telemetry.reportsPatternDump ?? false;
 }

@@ -10,7 +10,7 @@ import type { ConnectionState } from '../midi/types.ts';
 import type { ParsedPattern } from '../midi/sysex/parser.ts';
 import type { PartMeta } from '../store/parts.ts';
 import { partColor } from '../lib/colors.ts';
-import { getProfile } from '../core/profiles/registry.ts';
+import { getProfile, supportsRichEditor } from '../core/profiles/registry.ts';
 import { sendParam } from '../midi/bridge.ts';
 import type { Machine, MachineActions, MachinePart, ParamValues } from './machine.ts';
 
@@ -33,23 +33,28 @@ export interface LocalMachineInput {
 }
 
 export function buildLocalMachine(input: LocalMachineInput): Machine {
-  const parts: MachinePart[] = input.partsMeta.map((meta) => {
-    const parsed = input.pattern?.parts[meta.id - 1] ?? null;
-    return {
-      id: meta.id,
-      customName: meta.customName ?? null,
-      color: meta.customColor ?? partColor(meta.id),
-      oscType: parsed?.oscType ?? null,
-      muted: parsed?.mute ?? false,
-      voiceAssign: parsed?.voiceAssign ?? null,
-      filterType: parsed?.filterType ?? null,
-      ifxType: parsed?.ifxType ?? null,
-      lastStep: parsed?.lastStep ?? null,
-      params: input.paramsByPart[meta.id] ?? {},
-    };
-  });
-
   const profile = input.profileId ? getProfile(input.profileId) : null;
+  const richEditor = supportsRichEditor(profile?.id ?? null);
+
+  // Only machines with the rich editor (Electribe) have a meaningful 16-part
+  // model; others stay empty so the lite panel and broadcast carry no bogus parts.
+  const parts: MachinePart[] = richEditor
+    ? input.partsMeta.map((meta) => {
+        const parsed = input.pattern?.parts[meta.id - 1] ?? null;
+        return {
+          id: meta.id,
+          customName: meta.customName ?? null,
+          color: meta.customColor ?? partColor(meta.id),
+          oscType: parsed?.oscType ?? null,
+          muted: parsed?.mute ?? false,
+          voiceAssign: parsed?.voiceAssign ?? null,
+          filterType: parsed?.filterType ?? null,
+          ifxType: parsed?.ifxType ?? null,
+          lastStep: parsed?.lastStep ?? null,
+          params: input.paramsByPart[meta.id] ?? {},
+        };
+      })
+    : [];
 
   return {
     id: 'local',
@@ -59,6 +64,7 @@ export function buildLocalMachine(input: LocalMachineInput): Machine {
     // broadcast snapshot never claims a profile its model string contradicts.
     profileId: profile?.id ?? null,
     editable: true,
+    richEditor,
     online: input.connectionStatus === 'connected',
     knobMode: input.knobMode,
     activePartId: input.activePartId,
@@ -78,6 +84,9 @@ export function buildLocalMachine(input: LocalMachineInput): Machine {
 
 export function useLocalMachine(): Machine {
   const connectionStatus = useConnectionStore((s) => s.state.status);
+  const profileId = useConnectionStore((s) =>
+    s.state.status === 'connected' ? s.state.profileId : null,
+  );
   const partsMeta = usePartsStore((s) => s.parts);
   const activePartId = usePartsStore((s) => s.activePartId);
   const selectedPartId = usePartsStore((s) => s.selectedPartId);
@@ -92,8 +101,7 @@ export function useLocalMachine(): Machine {
     () =>
       buildLocalMachine({
         connectionStatus,
-        // Single-device today; resolved from the connected identity in a later phase.
-        profileId: 'korg-electribe-2',
+        profileId,
         knobMode,
         partsMeta,
         pattern,
@@ -103,6 +111,7 @@ export function useLocalMachine(): Machine {
       }),
     [
       connectionStatus,
+      profileId,
       knobMode,
       partsMeta,
       pattern,
