@@ -1,0 +1,48 @@
+# ENSEMBLE — self-hosted stack (ENSEMBLE §6, Phase 0).
+#
+#   caddy   : TLS + serves the built cockpit and reverse-proxies the WS server
+#   ws      : the session relay (presence / BPM / device replication / cues)
+#   ninjam  : the audio jam server (clients connect with a NATIVE app, not the
+#             browser) — listens on TCP 2049, reached directly (not via Caddy)
+#
+# Configure via a .env file next to this one (see docs/DEPLOY.md):
+#   DOMAIN, VITE_SESSION_URL, VITE_NINJAM_HOST
+
+services:
+  caddy:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.web
+      args:
+        VITE_SESSION_URL: ${VITE_SESSION_URL}
+        VITE_NINJAM_HOST: ${VITE_NINJAM_HOST}
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - ws
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+  ws:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    expose:
+      - "8787"
+    restart: unless-stopped
+
+  ninjam:
+    build:
+      context: ./ninjam
+    ports:
+      - "2049:2049"
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -14,6 +14,7 @@ import { ConnectionStatus } from './components/ConnectionStatus.tsx';
 import { MultiTabGuard } from './components/MultiTabGuard.tsx';
 import { SessionBar } from './components/SessionBar.tsx';
 import { TransportBar } from './components/TransportBar.tsx';
+import { AudioPanel } from './components/AudioPanel.tsx';
 import { CueDeck } from './components/CueDeck.tsx';
 import { MachinePanel } from './components/MachinePanel.tsx';
 import { PresetLibrary } from './components/PresetLibrary.tsx';
@@ -53,6 +54,7 @@ export function App() {
           onDisconnect={() => setSessionConfig(null)}
         />
         <TransportBar />
+        <AudioPanel />
         <CueDeck />
         <MachinePanel machine={localMachine} actions={localMachineActions} />
         {peerMachines.map((machine) => (

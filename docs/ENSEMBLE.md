@@ -50,7 +50,7 @@ réseau WS ──► DeviceSnapshot ─┘   (même UI rend local OU distant)
 
 | Phase | Contenu | État |
 |---|---|---|
-| 0 | Serveur NINJAM Docker (Hetzner/Caddy) + jam via Jamtaba | ⬜ à faire |
+| 0 | Audio NINJAM : transport + panneau Audio + infra Docker/Caddy + déploiement | 🟩 fait (`infra/`, `AudioPanel`, `docs/DEPLOY.md`) — build ninjamsrv à valider au déploiement |
 | 1a | Lecture clock MIDI → BPM + position mesure (module pur testé) | 🟩 fait (`src/core/clock`) |
 | 1b | Serveur WS (relais présence/BPM/snapshots/cues) + client + présence | 🟩 fait (`server/`, `src/net/`) |
 | 1c | Clock live (`bridge` feed `MidiClock`) + diffusion du transport par l'hôte + phare BPM/mesure | 🟩 fait (`useClock`, `TransportBar`) |
@@ -75,9 +75,10 @@ Process Node autonome (`server/`), relais fan-out pur :
 
 ## Ce qui reste explicitement à construire (neuf)
 
-- L'orchestration NINJAM réelle (lancement/lien client natif) + Phase 0 infra.
 - Setup guidé d'une machine inconnue → génération d'un nouveau Device Profile.
 - Étape structurelle : monorepo + rename ENSEMBLE.
+- Validation hardware de la clock Electribe (émission `0xF8`/transport) + de l'audio
+  NINJAM bout-en-bout (recette Phase 0 dans `docs/DEPLOY.md`).
 
 > Limite connue des cues : un pair (non-hôte) calcule `landAtBar` depuis sa mesure
 > partagée relayée (~200 ms de retard), donc l'atterrissage peut différer d'±1
