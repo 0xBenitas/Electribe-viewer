@@ -2,8 +2,8 @@
 
 > Ce repo évolue d'EMX.PILOT (éditeur mono-machine Korg Electribe 2) vers
 > **ENSEMBLE** : un cockpit de jam où l'on joue *et* édite ses machines, seul ou
-> à plusieurs à distance. Décision actée : **ADR-005**. Spec source du volet jam :
-> `11faac72-ENSEMBLEspec.md` (brief d'origine — la stack y est révisée, cf. ADR-005).
+> à plusieurs à distance. Décision actée : **ADR-005** (le brief ENSEMBLE
+> d'origine, hors repo, en est la source ; sa stack est révisée par l'ADR-005).
 
 ## L'idée en une phrase
 
@@ -54,7 +54,7 @@ réseau WS ──► DeviceSnapshot ─┘   (même UI rend local OU distant)
 | 1a | Lecture clock MIDI → BPM + position mesure (module pur testé) | 🟩 fait (`src/core/clock`) |
 | 1b | Serveur WS (relais présence/BPM/snapshots/cues) + client + présence | 🟩 fait (`server/`, `src/net/`) |
 | 1c | Clock live (`bridge` feed `MidiClock`) + diffusion du transport par l'hôte + phare BPM/mesure | 🟩 fait (`useClock`, `TransportBar`) |
-| 2 | Device Profiles : format + détection + setup machine inconnue (→ JSON contribuable) | 🟩 fait (`registry`, 6 profils, `DeviceSetup`) |
+| 2 | Device Profiles : format + détection + setup machine inconnue (→ JSON contribuable) | 🟩 fait (`registry`, 8 profils, `DeviceSetup`) |
 | 2d | Connexion généralisée : toute machine MIDI se connecte (inquiry best-effort), profil par nom de port, UI capability-driven (éditeur Electribe / cockpit lite) | 🟩 fait (`client`, `bridge`, `MachinePanel`) |
 | 2b | **Fusion viewer** : read-model `Machine` + adaptateurs snapshot + composants pilotés par le read-model (local ou distant) | 🟩 fait (`src/model`, composants migrés) |
 | 2c | Diffusion `DeviceSnapshot` (hôte→pairs) + rendu des machines des pairs | 🟩 fait (`useSessionSync`, `usePeerMachines`) |

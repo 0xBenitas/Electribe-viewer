@@ -264,3 +264,11 @@ mais « faire évoluer ce repo » (historique + cœur MIDI gardés).
 `src/core/profiles/` (types + registry + 2 profils JSON + tests),
 `src/core/transport/` (AudioTransport + NinjamTransport),
 `src/core/session/` (protocole WS + DeviceSnapshot). Typecheck + lint + 40 tests OK.
+
+### Mise à jour (suite de la session)
+
+Tout le « reste à construire » ci-dessus est livré (clock, serveur WS, câblage
+snapshot, audio NINJAM, UI cockpit). Le **rename EMX.PILOT → ENSEMBLE est fait** ;
+le **monorepo `apps/`/`packages/` est écarté** (sur-ingénierie pour 1 app + 1 petit
+serveur ; `src/core` donne déjà la séparation). État courant suivi dans
+`docs/ENSEMBLE.md`.

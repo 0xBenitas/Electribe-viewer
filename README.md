@@ -43,6 +43,10 @@ src/midi/      adaptateur Web MIDI (client, SysEx, CC)
 src/store/     état Zustand (connexion, parts, params, session, cues, clock)
 src/components/ UI cockpit (panels machine, transport, cues, audio, setup)
 src/net/       client WS + dispatch + diffusion
+src/db/        persistance IndexedDB (Dexie) : presets, metadata de parts
+src/data/      tables statiques (oscillateurs Electribe)
+src/lib/       utilitaires (couleurs de parts, multi-tab guard)
+src/styles/    Tailwind + palette
 server/        relais de session WebSocket (hub pur + adaptateur ws)
 device-profiles/ profils JSON versionnés (un par machine)
 infra/         docker-compose + Caddy + NINJAM
