@@ -1,8 +1,9 @@
 import type { CCParam } from '../midi/ccMap.ts';
 import type { MachinePart } from '../model/machine.ts';
-import { ParamSlider, ParamToggle } from './ParamSlider.tsx';
+import { ParamKnob } from './ParamKnob.tsx';
+import { ParamToggle } from './ParamSlider.tsx';
 
-const SLIDERS: CCParam[] = [
+const KNOBS: CCParam[] = [
   'filterCutoff',
   'filterReso',
   'egAttack',
@@ -35,13 +36,17 @@ export function ParamPanel({
   // unknown part on the machine. A remote machine is never editable.
   const disabled = !editable || activePartId === null;
   const onChange = editable ? onSetParam : undefined;
+  const color = mirrorPart?.color ?? '#ff6b35';
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-line bg-bg-2 p-4">
+    <section className="card-acid flex flex-col gap-4 bg-bg-2 p-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-bold text-text">
-          Paramètres temps réel · Part {String(mirrorPartId).padStart(2, '0')}
-        </h2>
+        <span className="font-display text-base font-bold text-text">
+          PARAMÈTRES
+        </span>
+        <span className="text-[10px] tracking-[0.16em] text-text-dim">
+          PART {String(mirrorPartId).padStart(2, '0')}
+        </span>
       </div>
 
       {editable && activePartId === null && (
@@ -51,12 +56,13 @@ export function ParamPanel({
         </p>
       )}
 
-      <div className="flex flex-col gap-3">
-        {SLIDERS.map((p) => (
-          <ParamSlider
+      <div className="grid grid-cols-4 gap-x-3 gap-y-4">
+        {KNOBS.map((p) => (
+          <ParamKnob
             key={p}
             param={p}
             value={mirrorPart?.params[p]}
+            color={color}
             disabled={disabled}
             onChange={onChange}
           />
@@ -74,6 +80,6 @@ export function ParamPanel({
           />
         ))}
       </div>
-    </div>
+    </section>
   );
 }

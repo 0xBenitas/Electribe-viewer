@@ -10,6 +10,7 @@ import {
   type CueKind,
 } from '../model/cues.ts';
 import { sendCue } from '../net/sessionLink.ts';
+import { CUE_COLORS } from './cueColors.ts';
 
 export function CueDeck() {
   const transport = useSharedTransport();
@@ -54,7 +55,12 @@ export function CueDeck() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
-      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
+      if (
+        el &&
+        (el.tagName === 'INPUT' ||
+          el.tagName === 'TEXTAREA' ||
+          el.isContentEditable)
+      ) {
         return;
       }
       const idx = Number(e.key) - 1;
@@ -76,61 +82,77 @@ export function CueDeck() {
     .filter((c) => c.status !== 'expired')
     .sort((a, b) => a.cue.landAtBar - b.cue.landAtBar);
 
+  // What state each deck button reflects (its own cue armed/landing).
+  const stateByKind = new Map<CueKind, 'pending' | 'active'>();
+  for (const c of live) {
+    const prev = stateByKind.get(c.cue.kind);
+    if (c.status === 'active') stateByKind.set(c.cue.kind, 'active');
+    else if (prev !== 'active') stateByKind.set(c.cue.kind, 'pending');
+  }
+
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-line bg-bg-2 p-4">
+    <section className="card-acid flex flex-col gap-3.5 bg-bg-2 p-[18px]">
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-text-dim">
-          Cues
-        </h2>
-        {!canFire && (
-          <span className="text-[10px] text-text-muted">
-            lance la lecture pour signaler
-          </span>
-        )}
+        <span className="font-display text-base font-bold text-text">
+          CUE DECK
+        </span>
+        <span className="text-[10px] tracking-[0.18em] text-text-dim">
+          {canFire ? 'TAP → DOWNBEAT' : 'LANCE LA LECTURE'}
+        </span>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {CUE_ORDER.map((kind, i) => (
-          <button
-            key={kind}
-            onClick={() => fire(kind)}
-            disabled={!canFire}
-            title={`Raccourci : ${i + 1}`}
-            className="rounded-md border border-line bg-bg-3 px-3 py-1.5 text-sm font-medium text-text transition-colors hover:border-blue hover:text-blue disabled:opacity-40 disabled:hover:border-line disabled:hover:text-text"
-          >
-            {CUE_LABELS[kind]}
-            <span className="ml-1.5 text-[10px] text-text-muted">{i + 1}</span>
-          </button>
-        ))}
+      <div className="grid grid-cols-2 gap-2.5">
+        {CUE_ORDER.map((kind, i) => {
+          const color = CUE_COLORS[kind];
+          const st = stateByKind.get(kind);
+          const filled = st !== undefined;
+          const now = st === 'active';
+          return (
+            <button
+              key={kind}
+              onClick={() => fire(kind)}
+              disabled={!canFire}
+              title={`Raccourci : ${i + 1}`}
+              className={`btn-acid flex flex-col items-start gap-1 px-3.5 py-3 ${
+                now || st === 'pending' ? 'animate-blink' : ''
+              }`}
+              style={{
+                background: filled ? color : '#0d0d10',
+                color: filled ? '#0a0a0b' : 'var(--color-text)',
+              }}
+            >
+              <span className="font-display text-[17px] font-extrabold tracking-[0.01em]">
+                {CUE_LABELS[kind]}
+              </span>
+              <span className="text-[9px] tracking-[0.16em] opacity-80">
+                {now ? '▶ NOW' : st === 'pending' ? '◷ ARMÉ' : `TAP · ${i + 1}`}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {live.length > 0 && (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-1.5">
           {live.map(({ cue, peer, status }) => {
             const active = status === 'active';
             const barsAway = cue.landAtBar - currentBar;
             return (
               <li
                 key={cue.id}
-                className={`flex items-center justify-between rounded-md border px-3 py-2 ${
-                  active
-                    ? 'animate-pulse border-green bg-green/20'
-                    : 'border-line bg-bg-3'
-                }`}
+                className="flex items-center justify-between rounded-lg border-2 border-black px-3 py-1.5 text-xs"
+                style={{
+                  background: active ? CUE_COLORS[cue.kind] : '#0d0d10',
+                  color: active ? '#0a0a0b' : 'var(--color-text)',
+                }}
               >
                 <span className="flex items-baseline gap-2">
-                  <span
-                    className={`text-sm font-bold ${active ? 'text-green' : 'text-text'}`}
-                  >
-                    {CUE_LABELS[cue.kind]}
-                  </span>
-                  <span className="text-xs text-text-dim">
+                  <span className="font-bold">{CUE_LABELS[cue.kind]}</span>
+                  <span className={active ? 'opacity-70' : 'text-text-dim'}>
                     {senderName(peer)}
                   </span>
                 </span>
-                <span
-                  className={`text-xs font-medium ${active ? 'text-green' : 'text-text-dim'}`}
-                >
+                <span className="font-medium">
                   {active
                     ? 'MAINTENANT'
                     : barsAway === 1
@@ -142,6 +164,6 @@ export function CueDeck() {
           })}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

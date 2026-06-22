@@ -3,8 +3,17 @@ import { useSharedTransport } from '../model/useClock.ts';
 
 const BEATS_PER_BAR = 4;
 
-/** Fullscreen, projectable bar/beat lighthouse. Esc or the button closes it. */
-export function LighthouseOverlay({ onClose }: { onClose: () => void }) {
+interface Props {
+  onClose: () => void;
+  /** Projected big (Bastien's choice: part name + measure). */
+  name?: string;
+  kind?: string;
+  color?: string;
+}
+
+/** Fullscreen, projectable phare: the part in focus huge, the live measure
+ *  underneath. Click or Esc closes it. Ultra-contrasted for the stage. */
+export function LighthouseOverlay({ onClose, name, kind, color = '#ff6b35' }: Props) {
   const t = useSharedTransport();
 
   useEffect(() => {
@@ -16,50 +25,75 @@ export function LighthouseOverlay({ onClose }: { onClose: () => void }) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-10 bg-bg">
-      <button
-        onClick={onClose}
-        className="absolute right-6 top-6 rounded-md border border-line bg-bg-3 px-3 py-1.5 text-sm text-text-dim hover:text-text"
-      >
-        Fermer (Esc)
-      </button>
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center overflow-hidden bg-[#050505]"
+    >
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div
+          className="animate-sweep rounded-full"
+          style={{
+            width: '140vmin',
+            height: '140vmin',
+            background: `conic-gradient(from 0deg, ${color}44, transparent 18%, transparent 82%, ${color}44)`,
+          }}
+        />
+      </div>
+      <div className="absolute inset-0 flex items-center justify-center opacity-55">
+        <div
+          className="animate-spin-slow rounded-full"
+          style={{ width: '62vmin', height: '62vmin', border: `3px solid ${color}` }}
+        />
+      </div>
 
-      {t ? (
-        <>
-          <div className="text-center">
-            <div className="font-mono text-[12vw] font-bold leading-none text-text">
-              {String(t.bar).padStart(2, '0')}
-            </div>
-            <div className="mt-2 text-xl uppercase tracking-widest text-text-dim">
-              mesure
-            </div>
-          </div>
-
-          <div className="flex items-center gap-6">
-            {Array.from({ length: BEATS_PER_BAR }, (_, i) => {
-              const active = i + 1 === t.beat && t.running;
-              return (
-                <span
-                  key={i}
-                  className={`rounded-full transition-colors ${
-                    active ? 'bg-green' : 'bg-line'
-                  }`}
-                  style={{ width: '6vw', height: '6vw' }}
-                />
-              );
-            })}
-          </div>
-
-          <div className="text-2xl text-text-dim">
-            {t.bpm !== null ? t.bpm.toFixed(0) : '—'} BPM
-            {!t.running && <span className="ml-3 text-yellow">arrêté</span>}
-          </div>
-        </>
-      ) : (
-        <div className="text-2xl text-text-muted">
-          En attente d'une horloge…
+      <div className="relative z-[2] px-6 text-center">
+        <div className="mb-6 text-[13px] uppercase tracking-[0.4em] text-text-dim">
+          Le phare
         </div>
-      )}
+        <div
+          className="mx-auto mb-8 size-[110px] rounded-full border-4 border-black"
+          style={{ background: color, boxShadow: `0 0 0 6px #050505, 0 0 70px ${color}` }}
+        />
+        <div
+          className="font-display font-extrabold leading-[0.84] tracking-[-0.03em] text-white"
+          style={{ fontSize: 'clamp(60px,13vw,150px)', textShadow: '5px 5px 0 #000' }}
+        >
+          {name ?? (t ? 'EN JEU' : '—')}
+        </div>
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-4 text-base uppercase tracking-[0.2em]">
+          {kind && <span style={{ color }}>{kind}</span>}
+          {kind && <span className="size-2 rounded-full bg-line-bright" />}
+          <span className="text-text-dim">
+            {t?.bpm != null ? t.bpm.toFixed(0) : '—'} BPM
+          </span>
+          <span className="size-2 rounded-full bg-line-bright" />
+          <span className="text-text-dim">
+            MESURE {t ? String(t.bar).padStart(3, '0') : '—'}:{t ? t.beat : '—'}
+          </span>
+        </div>
+
+        <div className="mt-8 flex items-center justify-center gap-5">
+          {Array.from({ length: BEATS_PER_BAR }, (_, i) => {
+            const active = t != null && i + 1 === t.beat && t.running;
+            return (
+              <span
+                key={i}
+                className="rounded-full border-2 border-black"
+                style={{
+                  width: '3.4vw',
+                  height: '3.4vw',
+                  background: active ? color : '#26262c',
+                  boxShadow: active ? `0 0 24px ${color}` : 'none',
+                }}
+              />
+            );
+          })}
+        </div>
+
+        <div className="mt-10 text-[11px] uppercase tracking-[0.24em] text-text-muted">
+          Clic ou Échap pour fermer
+        </div>
+      </div>
     </div>
   );
 }

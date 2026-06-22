@@ -24,6 +24,13 @@ export interface MachinePart {
   filterType: number | null;
   ifxType: number | null;
   lastStep: number | null;
+  /** Step on/off for the mini-sequencer (parser data). [] when not hydrated or
+   *  for a remote peer (the snapshot keeps the wire small and omits steps). */
+  steps: boolean[];
+  /** Amp level 0-127, or null if not hydrated. Drives the tile level bar. */
+  level: number | null;
+  /** Oscillator pitch -63..63, or null if not hydrated. */
+  pitch: number | null;
   /** CC-mirrored realtime param values (decoded, app-space). */
   params: ParamValues;
 }

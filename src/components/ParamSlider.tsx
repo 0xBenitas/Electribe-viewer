@@ -53,11 +53,10 @@ export function ParamToggle({ param, value, disabled = false, onChange }: Props)
     <button
       disabled={locked}
       onClick={() => onChange?.(param, on ? 0 : 1)}
-      className={`rounded-md border px-3 py-1.5 text-xs disabled:opacity-50 ${
-        on
-          ? 'border-green bg-green/15 text-green'
-          : 'border-line bg-bg-3 text-text-dim'
+      className={`btn-acid px-3 py-1.5 text-xs font-medium ${
+        on ? 'bg-green text-[#0a1404]' : 'bg-bg-3 text-text-dim'
       }`}
+      style={{ borderWidth: '2px', borderRadius: '10px', boxShadow: '2px 2px 0 #000' }}
     >
       {spec.description}: {on ? 'On' : 'Off'}
     </button>
