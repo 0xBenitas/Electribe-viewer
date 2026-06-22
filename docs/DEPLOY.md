@@ -39,6 +39,25 @@ peuvent bouger avec l'upstream — vérifie le premier build et ajuste si besoin
 (le reste de la stack est indépendant de cette étape). Config serveur :
 `infra/ninjam/ninjamsrv.cfg`.
 
+## Déploiement réel — VPS « omexom » (2026-06-22)
+
+En prod, JAMBOREE **n'utilise pas** le compose autonome ci-dessus (le hub Caddy
+d'omexom possède déjà 80/443). Il est intégré au hub :
+
+- **URL** : https://jamboreeeeeeee.duckdns.org — TLS auto via challenge **DNS DuckDNS**
+  (`resolvers 1.1.1.1`), donc HTTPS = secure context, requis par Web MIDI.
+- **Cockpit statique** : `VITE_SESSION_URL=wss://jamboreeeeeeee.duckdns.org/ws npm run build`
+  → `dist/` copié dans `/opt/jamboree/public`, bind-monté `:ro` dans le conteneur
+  `omexom-caddy` sous `/srv/jamboree`, servi en `file_server` (fallback SPA).
+- **Relais WS** : service `jamboree-ws` dans `/opt/omexom/docker-compose.yml`
+  (build `server/Dockerfile`, réseau `omexom_default`, port interne 8787) ; le hub
+  fait `handle /ws*` → `reverse_proxy jamboree-ws:8787` dans le vhost.
+- **Redéployer le cockpit** : rebuild `dist` (mêmes `VITE_*`) → copier dans
+  `/opt/jamboree/public` (pas de restart caddy nécessaire, file_server lit le disque).
+- **Redéployer le serveur** : `cd /opt/omexom && docker compose up -d --build jamboree-ws`.
+- NINJAM (audio, 2049/TCP) **pas encore déployé** — le cockpit (tempo/présence/cues)
+  fonctionne sans ; à ajouter quand on voudra l'audio.
+
 ## Recette de Phase 0 (« vous jammez déjà »)
 
 L'objectif de la spec : jammer pour de vrai, sans même le cockpit.
