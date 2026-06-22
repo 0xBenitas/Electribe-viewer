@@ -51,6 +51,9 @@ export function buildLocalMachine(input: LocalMachineInput): Machine {
           filterType: parsed?.filterType ?? null,
           ifxType: parsed?.ifxType ?? null,
           lastStep: parsed?.lastStep ?? null,
+          steps: parsed ? parsed.steps.map((s) => s.on) : [],
+          level: parsed?.ampLevel ?? null,
+          pitch: parsed?.oscPitch ?? null,
           params: input.paramsByPart[meta.id] ?? {},
         };
       })

@@ -51,6 +51,11 @@ export function snapshotToMachine(
     filterType: p.filterType,
     ifxType: p.ifxType,
     lastStep: p.lastStep,
+    // The snapshot omits steps/level/pitch to keep the wire small; a peer's
+    // tiles therefore show no sequencer/level (graceful, read-only).
+    steps: [],
+    level: null,
+    pitch: null,
     // Copy: the read-model must not alias the session store's snapshot object.
     params: { ...p.params } as ParamValues,
   }));

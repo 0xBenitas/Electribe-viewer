@@ -20,15 +20,18 @@ interface MachinePanelProps {
  */
 export function MachinePanel({ machine, actions }: MachinePanelProps) {
   return (
-    <section className="flex flex-col gap-4 rounded-lg border border-line p-4">
+    <section className="card-acid flex flex-col gap-4 bg-bg-2 p-[18px]">
       <header className="flex items-baseline gap-2">
         <span
-          className={`size-2 rounded-full ${machine.online ? 'bg-green' : 'bg-line-bright'}`}
+          className={`size-2.5 rounded-full ${machine.online ? 'bg-green' : 'bg-line-bright'}`}
+          style={machine.online ? { boxShadow: '0 0 8px var(--color-green)' } : undefined}
         />
-        <h2 className="text-sm font-bold text-text">{machine.label}</h2>
+        <h2 className="font-display text-base font-bold text-text">
+          {machine.label}
+        </h2>
         <span className="text-xs text-text-muted">{machine.model}</span>
         {!machine.editable && (
-          <span className="text-[10px] uppercase tracking-wide text-text-dim">
+          <span className="ml-auto text-[10px] uppercase tracking-wide text-cyan">
             lecture seule
           </span>
         )}
@@ -82,7 +85,7 @@ function Editor({ machine, actions }: MachinePanelProps) {
 function LitePanel({ machine }: { machine: Machine }) {
   const profile = machine.profileId ? getProfile(machine.profileId) : null;
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-line bg-bg-3 p-3 text-sm">
+    <div className="flex flex-col gap-2 rounded-[14px] border-2 border-black bg-bg-3 p-3 text-sm">
       {profile ? (
         <p className="text-text-dim">
           {profile.tracks.count} {profile.tracks.label}

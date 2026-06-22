@@ -15,11 +15,19 @@ export function PartGrid({
   onSelect,
 }: PartGridProps) {
   return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-bold uppercase tracking-wider text-text-dim">
-        Parts
-      </h2>
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+    <section className="card-acid bg-bg-2 p-[18px]">
+      <div className="mb-3.5 flex items-center justify-between">
+        <span className="font-display text-base font-bold text-text">
+          MACHINES{' '}
+          <span className="font-mono text-xs font-medium text-text-dim">
+            / {parts.length} PARTS
+          </span>
+        </span>
+        <span className="text-[10px] tracking-[0.18em] text-text-dim">
+          TAP = SÉLECTION · ◼ = MUTE
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {parts.map((part) => (
           <PartTile
             key={part.id}
