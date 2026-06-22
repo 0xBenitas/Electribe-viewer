@@ -55,8 +55,11 @@ d'omexom possède déjà 80/443). Il est intégré au hub :
 - **Redéployer le cockpit** : rebuild `dist` (mêmes `VITE_*`) → copier dans
   `/opt/jamboree/public` (pas de restart caddy nécessaire, file_server lit le disque).
 - **Redéployer le serveur** : `cd /opt/omexom && docker compose up -d --build jamboree-ws`.
-- NINJAM (audio, 2049/TCP) **pas encore déployé** — le cockpit (tempo/présence/cues)
-  fonctionne sans ; à ajouter quand on voudra l'audio.
+- **NINJAM (audio)** : service `jamboree-ninjam` (build `infra/ninjam`, compilé depuis
+  les sources upstream), port **2049/TCP publié** sur l'hôte + **UFW ouvert** (`ufw allow
+  2049/tcp`). Les clients **natifs** (Jamtaba / Reaper) se connectent en direct sur
+  `jamboreeeeeeee.duckdns.org:2049` (le navigateur ne porte pas l'audio). Config :
+  `infra/ninjam/ninjamsrv.cfg` (anonyme, 8 users max, BPM 120 / BPI 16, pas d'enreg.).
 
 ## Recette de Phase 0 (« vous jammez déjà »)
 
