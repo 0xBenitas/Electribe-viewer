@@ -18,6 +18,7 @@ interface Props {
  */
 export function SessionBar({ room, server, onDisconnect }: Props) {
   const [copied, setCopied] = useState(false);
+  const [copiedListen, setCopiedListen] = useState(false);
 
   const self = useSessionStore((s) => s.self);
   const linkStatus = useSessionStore((s) => s.linkStatus);
@@ -28,6 +29,15 @@ export function SessionBar({ room, server, onDisconnect }: Props) {
     void navigator.clipboard?.writeText(buildShareLink(room, server)).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  // Listen link → the standalone audio page (works on any phone, iPhone too).
+  const listenLink = `${location.origin}/ecouter.html?room=${encodeURIComponent(room)}`;
+  const copyListen = () => {
+    void navigator.clipboard?.writeText(listenLink).then(() => {
+      setCopiedListen(true);
+      setTimeout(() => setCopiedListen(false), 1500);
     });
   };
 
@@ -64,6 +74,17 @@ export function SessionBar({ room, server, onDisconnect }: Props) {
       >
         {copied ? 'Lien copié ✓' : 'Copier le lien'}
       </button>
+      <a
+        href={listenLink}
+        target="_blank"
+        rel="noreferrer"
+        onClick={copyListen}
+        title="Lien d'écoute audio (mobile/iPhone OK) — copié dans le presse-papier"
+        className="btn-acid bg-bg-3 px-3 py-1.5 text-xs text-text-dim no-underline"
+        style={{ borderWidth: '2px', boxShadow: '2px 2px 0 #000' }}
+      >
+        {copiedListen ? 'Lien copié ✓' : '🔊 Lien d’écoute'}
+      </a>
       <button
         onClick={onDisconnect}
         className="btn-acid ml-auto bg-bg-3 px-3 py-1.5 text-xs text-text-dim"

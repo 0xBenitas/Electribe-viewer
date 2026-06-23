@@ -61,6 +61,29 @@ d'omexom possède déjà 80/443). Il est intégré au hub :
   `jamboreeeeeeee.duckdns.org:2049` (le navigateur ne porte pas l'audio). Config :
   `infra/ninjam/ninjamsrv.cfg` (anonyme, 8 users max, BPM 120 / BPI 16, pas d'enreg.).
 
+## Écoute web sur mobile (Icecast) — 2026-06-23
+
+Pour qu'un pote écoute le live dans un **navigateur mobile** (iPhone Safari
+inclus), sans client NINJAM : un mini-serveur **Icecast** rediffuse le mix de la
+jam en **MP3** (seul format universel mobile), servi en HTTPS par le hub Caddy.
+
+- **Service** `jamboree-icecast` (image `moul/icecast`) dans
+  `/opt/omexom/docker-compose.yml` ; port **8000/TCP publié** (source push) +
+  **UFW ouvert** (`ufw allow 8000/tcp`). Mot de passe source = `Jamboree-Live-2026`.
+- **Caddy** : `handle /live*` → `reverse_proxy jamboree-icecast:8000 { flush_interval -1 }`
+  (pas de buffering = vrai live) dans le vhost `jamboreeeeeeee.duckdns.org`.
+  ⚠️ Le `Caddyfile` est bind-monté → après édition, **restart** `omexom-caddy`
+  (l'`Edit` change l'inode, `caddy reload` ne suffit pas).
+- **Page d'écoute** : `public/ecouter.html` (statique, AUCUN React/Web MIDI → marche
+  sur iPhone) lit `/live`. Lien : `https://jamboreeeeeeee.duckdns.org/ecouter.html?room=<room>`,
+  copié par le bouton « 🔊 Lien d'écoute » du bandeau de session.
+- **L'hôte pousse le son** de sa jam (sortie carte son / loopback type BlackHole) :
+  ```sh
+  ffmpeg -re -i <entrée-audio> -c:a libmp3lame -b:a 128k -content_type audio/mpeg \
+    -f mp3 icecast://source:Jamboree-Live-2026@jamboreeeeeeee.duckdns.org:8000/live
+  ```
+- Limite v1 : **un seul flux** `/live` (une jam à la fois). Audio par room = plus tard.
+
 ## Recette de Phase 0 (« vous jammez déjà »)
 
 L'objectif de la spec : jammer pour de vrai, sans même le cockpit.

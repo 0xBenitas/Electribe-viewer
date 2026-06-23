@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>JAMBOREE — Écoute en direct</title>
+    <meta name="theme-color" content="#0a0a0b" />
+    <!--
+      Page d'écoute autonome : un simple lecteur audio HTML qui lit le flux
+      MP3 Icecast (/live) via le HTTPS de JAMBOREE. AUCUN React, AUCUN Web MIDI
+      → marche sur tous les navigateurs mobiles, iPhone (Safari) compris. Le son
+      d'une jam est un flux MP3 unique ; le ?room= n'est qu'un libellé.
+    -->
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; min-height: 100svh; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 22px; padding: 28px;
+        background: #0a0a0b; color: #f2f2f0;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        text-align: center;
+        background-image:
+          radial-gradient(circle at 18% 8%, #ff6b3522, transparent 42%),
+          radial-gradient(circle at 82% 12%, #da77f222, transparent 44%);
+      }
+      .brand { font-weight: 800; letter-spacing: -0.02em; font-size: 30px; }
+      .sub { font-size: 11px; letter-spacing: 0.34em; color: #9a9aa2; margin-top: 4px; }
+      .room { font-size: 13px; color: #9a9aa2; }
+      .room b { color: #f2f2f0; }
+      button#play {
+        appearance: none; cursor: pointer;
+        width: 132px; height: 132px; border-radius: 999px;
+        border: 3px solid #000; background: #a9e34b; color: #0a1404;
+        box-shadow: 6px 6px 0 #000; font-size: 17px; font-weight: 800;
+        display: flex; align-items: center; justify-content: center;
+        transition: transform .06s ease;
+      }
+      button#play:active { transform: translate(3px, 3px); box-shadow: 3px 3px 0 #000; }
+      button#play.playing { background: #ff8787; }
+      .status { font-size: 13px; color: #9a9aa2; min-height: 18px; }
+      .dot { display: inline-block; width: 9px; height: 9px; border-radius: 999px;
+             background: #3a3a40; margin-right: 7px; vertical-align: middle; }
+      .dot.live { background: #a9e34b; box-shadow: 0 0 10px #a9e34b; }
+      .hint { font-size: 11px; color: #6a6a72; max-width: 320px; line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <div>
+      <div class="brand">JAMBOREE 🍇</div>
+      <div class="sub">ÉCOUTE EN DIRECT</div>
+    </div>
+    <div class="room" id="room"></div>
+
+    <button id="play" aria-label="Écouter le live">▶ Écouter</button>
+
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">Touche pour lancer le live</span></div>
+    <div class="hint">
+      Le son passe par le flux de la jam. S'il n'y a pas de son, c'est que
+      personne ne diffuse pour l'instant — réessaie quand la jam tourne.
+    </div>
+
+    <audio id="audio" preload="none" playsinline></audio>
+
+    <script>
+      var audio = document.getElementById('audio');
+      var btn = document.getElementById('play');
+      var statusText = document.getElementById('statusText');
+      var dot = document.getElementById('dot');
+
+      var room = new URLSearchParams(location.search).get('room');
+      if (room) {
+        document.getElementById('room').innerHTML =
+          'Session <b>' + room.replace(/[<>&]/g, '') + '</b>';
+      }
+
+      function setStatus(txt, live) {
+        statusText.textContent = txt;
+        dot.className = live ? 'dot live' : 'dot';
+      }
+
+      function start() {
+        // Cache-bust + (re)assign on each play so a dropped stream can resume.
+        audio.src = '/live?_=' + Date.now();
+        var p = audio.play();
+        setStatus('Connexion au live…', false);
+        if (p && p.catch) {
+          p.catch(function () {
+            setStatus('Lecture bloquée — retouche le bouton.', false);
+            btn.classList.remove('playing');
+            btn.textContent = '▶ Écouter';
+          });
+        }
+      }
+      function stop() {
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+      }
+
+      btn.addEventListener('click', function () {
+        if (btn.classList.contains('playing')) {
+          stop();
+          btn.classList.remove('playing');
+          btn.textContent = '▶ Écouter';
+          setStatus('En pause', false);
+        } else {
+          start();
+          btn.classList.add('playing');
+          btn.textContent = '⏸ Stop';
+        }
+      });
+
+      audio.addEventListener('playing', function () { setStatus('En direct', true); });
+      audio.addEventListener('waiting', function () { setStatus('Mise en mémoire…', false); });
+      audio.addEventListener('stalled', function () { setStatus('Flux interrompu…', false); });
+      audio.addEventListener('error', function () {
+        setStatus('Pas de live pour l’instant — réessaie quand la jam tourne.', false);
+        btn.classList.remove('playing');
+        btn.textContent = '▶ Écouter';
+      });
+    </script>
+  </body>
+</html>
