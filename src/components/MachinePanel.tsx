@@ -102,7 +102,7 @@ function LitePanel({ machine }: { machine: Machine }) {
       )}
       <p className="text-xs text-text-muted">
         Édition détaillée non disponible pour ce profil. La machine participe au
-        tempo partagé, à la présence, aux cues et à l'audio.
+        tempo partagé, à la présence, aux repères et à l'audio.
       </p>
     </div>
   );

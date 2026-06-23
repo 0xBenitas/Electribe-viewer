@@ -143,4 +143,72 @@ describe('SessionHub', () => {
     expect(hub.handle('ghost', { t: 'device', snapshot: snap(1) })).toEqual([]);
     expect(hub.disconnect('ghost')).toEqual([]);
   });
+
+  describe('lobby discovery', () => {
+    /** Pull the `rooms` list from a `lobbies` response addressed to `peerId`. */
+    function lobbiesOf(hub: SessionHub, peerId: string) {
+      const out = hub.handle(peerId, { t: 'lobbies' });
+      const msg = to(out, peerId)?.msg;
+      return msg?.t === 'lobbies' ? msg.rooms : undefined;
+    }
+
+    it('returns no rooms when nobody is connected', () => {
+      const hub = new SessionHub(() => 1);
+      expect(lobbiesOf(hub, 'x')).toEqual([]);
+    });
+
+    it('aggregates rooms with their participant counts, busiest first', () => {
+      const hub = new SessionHub(() => 1);
+      hub.handle('a', { t: 'join', room: 'cave', info: { name: 'A' } });
+      hub.handle('b', { t: 'join', room: 'cave', info: { name: 'B' } });
+      hub.handle('c', { t: 'join', room: 'garage', info: { name: 'C' } });
+
+      const rooms = lobbiesOf(hub, 'a')!;
+      expect(rooms).toEqual([
+        { room: 'cave', count: 2, players: 2, host: 'A', hasHostWithMachine: false },
+        { room: 'garage', count: 1, players: 1, host: 'C', hasHostWithMachine: false },
+      ]);
+    });
+
+    it('counts listeners apart from players', () => {
+      const hub = new SessionHub(() => 1);
+      hub.handle('a', { t: 'join', room: 'cave', info: { name: 'A' } });
+      hub.handle('L', {
+        t: 'join',
+        room: 'cave',
+        info: { name: 'L', listener: true },
+      });
+
+      const room = lobbiesOf(hub, 'a')![0]!;
+      expect(room).toMatchObject({ count: 2, players: 1, host: 'A' });
+    });
+
+    it('flags a room whose host is already streaming a machine', () => {
+      const hub = new SessionHub(() => 1);
+      hub.handle('a', { t: 'join', room: 'cave', info: { name: 'A' } }); // host
+      hub.handle('b', { t: 'join', room: 'cave', info: { name: 'B' } });
+      hub.handle('a', { t: 'device', snapshot: snap(5) });
+
+      const room = lobbiesOf(hub, 'b')![0]!;
+      expect(room).toMatchObject({ room: 'cave', host: 'A', hasHostWithMachine: true });
+    });
+
+    it('does not register the asker as a member (discovery is read-only)', () => {
+      const hub = new SessionHub(() => 1);
+      hub.handle('a', { t: 'join', room: 'cave', info: { name: 'A' } });
+      // 'ghost' only ever asks for lobbies — it must not appear or create a room.
+      const rooms = lobbiesOf(hub, 'ghost')!;
+      expect(rooms).toEqual([
+        { room: 'cave', count: 1, players: 1, host: 'A', hasHostWithMachine: false },
+      ]);
+      // A real joiner afterwards sees only 'a', never 'ghost'.
+      const welcome = to(
+        hub.handle('b', { t: 'join', room: 'cave', info: { name: 'B' } }),
+        'b',
+      );
+      if (welcome?.msg.t === 'welcome') {
+        expect(welcome.msg.peers.map((p) => p.id)).toEqual(['a']);
+      }
+    });
+  });
 });

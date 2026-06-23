@@ -1,23 +1,22 @@
 import { useState } from 'react';
 import { useSessionStore } from '../store/session.ts';
 import { useSharedTransport } from '../model/useClock.ts';
-import { buildShareLink, loadPrefs, savePrefs } from '../lib/sessionPrefs.ts';
-import type { SessionConnectConfig } from '../net/useSessionSync.ts';
+import { buildShareLink } from '../lib/sessionPrefs.ts';
 
 interface Props {
-  connected: boolean;
-  onConnect: (config: SessionConnectConfig) => void;
+  /** Room currently joined (drives the title + share link). */
+  room: string;
+  /** Relay server URL currently in use (for the share link). */
+  server: string;
   onDisconnect: () => void;
 }
 
-const inputCls =
-  'rounded-md border-2 border-black bg-bg-3 px-3 py-2 text-sm text-text outline-none focus:border-blue';
-
-export function SessionBar({ connected, onConnect, onDisconnect }: Props) {
-  const initial = loadPrefs();
-  const [name, setName] = useState(initial.name);
-  const [room, setRoom] = useState(initial.room);
-  const [server, setServer] = useState(initial.server);
+/**
+ * The compact strip shown once you're in a session: who you are, link health,
+ * latency, shared tempo, copy-link and leave. The join flow lives in
+ * {@link LobbyBrowser} (the landing screen).
+ */
+export function SessionBar({ room, server, onDisconnect }: Props) {
   const [copied, setCopied] = useState(false);
 
   const self = useSessionStore((s) => s.self);
@@ -25,84 +24,11 @@ export function SessionBar({ connected, onConnect, onDisconnect }: Props) {
   const latencyMs = useSessionStore((s) => s.latencyMs);
   const transport = useSharedTransport();
 
-  const join = (listenOnly: boolean) => {
-    const trimmed = {
-      name: name.trim(),
-      room: room.trim() || 'jam',
-      server: server.trim(),
-    };
-    if (!trimmed.name) return;
-    savePrefs(trimmed);
-    onConnect({
-      url: trimmed.server,
-      room: trimmed.room,
-      name: trimmed.name,
-      listenOnly,
-    });
-  };
-
-  if (!connected) {
-    return (
-      <form
-        className="card-acid flex flex-wrap items-end gap-2 bg-bg-2 p-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          join(false);
-        }}
-      >
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-text-dim">Ton nom</span>
-          <input
-            className={inputCls}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Bastou"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-text-dim">Room</span>
-          <input
-            className={inputCls}
-            value={room}
-            onChange={(e) => setRoom(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          <span className="text-text-dim">Serveur</span>
-          <input
-            className={`${inputCls} w-56`}
-            value={server}
-            onChange={(e) => setServer(e.target.value)}
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={!name.trim()}
-          className="btn-acid bg-green px-4 py-2 text-sm font-bold text-[#0a1404]"
-        >
-          Rejoindre
-        </button>
-        <button
-          type="button"
-          onClick={() => join(true)}
-          disabled={!name.trim()}
-          title="Rejoindre sans machine, juste pour écouter et suivre"
-          className="btn-acid bg-bg-3 px-4 py-2 text-sm text-text-dim"
-          style={{ borderWidth: '2px', boxShadow: '3px 3px 0 #000' }}
-        >
-          Écouter seulement
-        </button>
-      </form>
-    );
-  }
-
   const copyLink = () => {
-    void navigator.clipboard
-      ?.writeText(buildShareLink(room, server))
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      });
+    void navigator.clipboard?.writeText(buildShareLink(room, server)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
   };
 
   return (

@@ -15,6 +15,7 @@ import { ConnectionStatus } from './components/ConnectionStatus.tsx';
 import { MultiTabGuard } from './components/MultiTabGuard.tsx';
 import { CockpitHeader } from './components/CockpitHeader.tsx';
 import { SessionBar } from './components/SessionBar.tsx';
+import { LobbyBrowser } from './components/LobbyBrowser.tsx';
 import { TransportBar } from './components/TransportBar.tsx';
 import { NowBanner } from './components/NowBanner.tsx';
 import { LighthouseHero } from './components/LighthouseHero.tsx';
@@ -109,11 +110,15 @@ export function App() {
         <CockpitHeader room={sessionConfig?.room ?? null} />
 
         {!listenOnly && <ConnectionStatus />}
-        <SessionBar
-          connected={sessionConfig !== null}
-          onConnect={setSessionConfig}
-          onDisconnect={() => setSessionConfig(null)}
-        />
+        {sessionConfig === null ? (
+          <LobbyBrowser onConnect={setSessionConfig} />
+        ) : (
+          <SessionBar
+            room={sessionConfig.room}
+            server={sessionConfig.url}
+            onDisconnect={() => setSessionConfig(null)}
+          />
+        )}
 
         <TransportBar onFullscreen={() => setLighthouse(true)} />
         <NowBanner />
@@ -192,7 +197,7 @@ function NoMachine({ machine }: { machine: Machine | null }) {
       <span className="font-display text-base font-bold text-text">Machines</span>
       <p className="text-text-dim">
         {machine
-          ? 'Édition détaillée non disponible pour ce profil — la machine suit le tempo, la présence, les cues et l’audio.'
+          ? 'Édition détaillée non disponible pour ce profil — la machine suit le tempo, la présence, les repères et l’audio.'
           : 'Connecte ta machine (USB) ou rejoins une session pour voir les machines.'}
       </p>
     </section>

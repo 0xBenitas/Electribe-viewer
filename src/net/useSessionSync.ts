@@ -10,6 +10,7 @@ import { machineToSnapshot } from '../model/adapters.ts';
 import { clockSnapshot } from '../midi/bridge.ts';
 import { useSessionStore } from '../store/session.ts';
 import { useCueStore } from '../store/cues.ts';
+import { useConnectionStore } from '../store/connection.ts';
 import type { Machine } from '../model/machine.ts';
 
 export interface SessionConnectConfig {
@@ -58,6 +59,10 @@ export function useSessionSync(
     const deviceTimer = listenOnly
       ? null
       : setInterval(() => {
+          // Only replicate a machine that's actually connected — otherwise a
+          // player who hasn't plugged in yet would broadcast an empty snapshot,
+          // making peers (and the lobby's "machine branchée" badge) lie.
+          if (useConnectionStore.getState().state.status !== 'connected') return;
           // Key off the actual wire payload (minus its timestamp) so UI-only
           // changes (custom name/colour) never trigger an identical broadcast.
           const snapshot = machineToSnapshot(machineRef.current, 0);

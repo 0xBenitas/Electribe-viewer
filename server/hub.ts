@@ -8,6 +8,7 @@
 import type {
   ClientMessage,
   Cue,
+  LobbyInfo,
   PeerInfo,
   PeerState,
   ServerMessage,
@@ -50,6 +51,12 @@ export class SessionHub {
             recipients: [peerId],
             msg: { t: 'pong', ts: msg.ts, serverTs: this.now() },
           },
+        ];
+      case 'lobbies':
+        // Discovery: answer the asker only. The asker never joins a room, so it
+        // stays out of `members` and alters nothing (like `ping`).
+        return [
+          { recipients: [peerId], msg: { t: 'lobbies', rooms: this.buildLobbies() } },
         ];
     }
   }
@@ -138,6 +145,28 @@ export class SessionHub {
     const others = this.others(peerId, member.room);
     if (others.length === 0) return [];
     return [{ recipients: others, msg: { t: 'cue', peer: peerId, cue } }];
+  }
+
+  /** Live sessions for the lobby browser, derived from the members map. */
+  private buildLobbies(): LobbyInfo[] {
+    const byRoom = new Map<string, Member[]>();
+    for (const m of this.members.values()) {
+      const list = byRoom.get(m.room);
+      if (list) list.push(m);
+      else byRoom.set(m.room, [m]);
+    }
+    return [...byRoom.entries()]
+      .map(([room, members]) => {
+        const host = members.find((m) => m.state.isHost);
+        return {
+          room,
+          count: members.length,
+          players: members.filter((m) => !m.state.info.listener).length,
+          host: host?.state.info.name,
+          hasHostWithMachine: host?.state.device != null,
+        };
+      })
+      .sort((a, b) => b.count - a.count || a.room.localeCompare(b.room));
   }
 
   private roomPeerStates(room: string): PeerState[] {

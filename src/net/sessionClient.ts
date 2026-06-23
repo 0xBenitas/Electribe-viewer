@@ -36,7 +36,7 @@ export interface SessionClientOptions {
   factory?: SocketFactory;
 }
 
-const defaultFactory: SocketFactory = (url) =>
+export const defaultSocketFactory: SocketFactory = (url) =>
   new WebSocket(url) as unknown as SocketLike;
 
 export class SessionClient {
@@ -45,7 +45,7 @@ export class SessionClient {
   constructor(private readonly opts: SessionClientOptions) {}
 
   connect(): void {
-    const make = this.opts.factory ?? defaultFactory;
+    const make = this.opts.factory ?? defaultSocketFactory;
     const socket = make(this.opts.url);
     this.socket = socket;
     this.opts.onStatus?.('connecting');

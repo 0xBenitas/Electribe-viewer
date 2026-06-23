@@ -58,7 +58,7 @@ export function ConnectionStatus() {
             onClick={() => void connect()}
             className="rounded-md border border-line-bright bg-bg-3 px-4 py-2 text-text hover:border-blue"
           >
-            Connecter
+            Brancher ma machine
           </button>
         </div>
       )}

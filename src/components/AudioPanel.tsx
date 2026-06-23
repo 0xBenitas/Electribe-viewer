@@ -31,7 +31,7 @@ export function AudioPanel() {
 
       <p className="text-xs text-text-dim">
         Connecte ton client natif (Jamtaba ou Reaper + plugin NINJAM) au serveur
-        ci-dessous. JAMBOREE gère le reste : tempo, présence, cues.
+        ci-dessous. JAMBOREE gère le reste : tempo, présence, repères.
       </p>
 
       <p className="text-[11px] text-text-muted">

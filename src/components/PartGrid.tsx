@@ -20,11 +20,11 @@ export function PartGrid({
         <span className="font-display text-base font-bold text-text">
           MACHINES{' '}
           <span className="font-mono text-xs font-medium text-text-dim">
-            / {parts.length} PARTS
+            / {parts.length} PISTES
           </span>
         </span>
         <span className="text-[10px] tracking-[0.18em] text-text-dim">
-          TAP = SÉLECTION · ◼ = MUTE
+          TAP = SÉLECTION · ◼ = COUPÉ
         </span>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

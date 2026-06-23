@@ -50,6 +50,23 @@ export interface TransportTick {
   running: boolean;
 }
 
+/**
+ * One live session, as seen from the lobby browser (the landing screen). Derived
+ * on demand from the members map — there is no reified Room object. Lets a client
+ * discover and join an ongoing jam without typing a room name blind.
+ */
+export interface LobbyInfo {
+  room: string;
+  /** Everyone in the room (players + listeners). */
+  count: number;
+  /** Players (non-listeners): those there to jam, not just to listen. */
+  players: number;
+  /** Display name of the host, if the room has one. */
+  host?: string;
+  /** The host is streaming a real (connected) machine — the jam is "live". */
+  hasHostWithMachine: boolean;
+}
+
 /** Messages a client sends to the server. */
 export type ClientMessage =
   | { t: 'join'; room: string; info: PeerInfo }
@@ -57,7 +74,9 @@ export type ClientMessage =
   | ({ t: 'transport' } & TransportTick)
   | { t: 'device'; snapshot: DeviceSnapshot }
   | { t: 'cue'; cue: Cue }
-  | { t: 'ping'; ts: number };
+  | { t: 'ping'; ts: number }
+  // Lobby discovery: ask for the live sessions without joining one.
+  | { t: 'lobbies' };
 
 /** Messages the server broadcasts to clients. */
 export type ServerMessage =
@@ -67,4 +86,5 @@ export type ServerMessage =
   | ({ t: 'transport'; host: PeerId; serverTs: number } & TransportTick)
   | { t: 'device'; peer: PeerId; snapshot: DeviceSnapshot }
   | { t: 'cue'; peer: PeerId; cue: Cue }
-  | { t: 'pong'; ts: number; serverTs: number };
+  | { t: 'pong'; ts: number; serverTs: number }
+  | { t: 'lobbies'; rooms: LobbyInfo[] };

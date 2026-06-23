@@ -65,7 +65,7 @@ export function Presence() {
       <div className="flex items-center justify-between">
         <span className="font-display text-base font-bold text-text">EN JEU</span>
         <span className="text-[10px] tracking-[0.16em] text-text-dim">
-          {rows.length === 0 ? 'SOLO' : `${playing}/${rows.length} JAMMERS`}
+          {rows.length === 0 ? 'SOLO' : `${playing}/${rows.length} MUSICIENS`}
         </span>
       </div>
 
