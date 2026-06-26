@@ -144,6 +144,32 @@ describe('SessionHub', () => {
     expect(hub.disconnect('ghost')).toEqual([]);
   });
 
+  it('evicts a stale ghost of the same client on a fast reconnect', () => {
+    let t = 0;
+    const hub = new SessionHub(() => ++t);
+    // Host joins with a stable clientId, then another player.
+    hub.handle('old', { t: 'join', room: 'jam', info: { name: 'A', clientId: 'C1' } }); // host
+    hub.handle('b', { t: 'join', room: 'jam', info: { name: 'B' } });
+    // 'old' silently dropped (half-open) — its close not yet seen — and the same
+    // client reconnects as 'new' before the server noticed.
+    const out = hub.handle('new', { t: 'join', room: 'jam', info: { name: 'A', clientId: 'C1' } });
+
+    // The survivor 'b' is told the ghost left.
+    expect(to(out, 'b')?.msg).toMatchObject({ t: 'peer-leave', peer: 'old' });
+    // 'new' gets a clean welcome WITHOUT its own ghost, and reclaims host.
+    const welcome = to(out, 'new');
+    expect(welcome?.msg.t).toBe('welcome');
+    if (welcome?.msg.t === 'welcome') {
+      expect(welcome.msg.peers.map((p) => p.id).sort()).toEqual(['b']);
+    }
+    const notice = out.find((o) => o.msg.t === 'peer-join');
+    expect(notice?.msg).toMatchObject({ t: 'peer-join', peer: { id: 'new', isHost: true } });
+    // The room no longer carries the ghost.
+    const rooms = hub.handle('x', { t: 'lobbies' });
+    const lob = to(rooms, 'x')?.msg;
+    if (lob?.t === 'lobbies') expect(lob.rooms[0]).toMatchObject({ room: 'jam', count: 2 });
+  });
+
   describe('lobby discovery', () => {
     /** Pull the `rooms` list from a `lobbies` response addressed to `peerId`. */
     function lobbiesOf(hub: SessionHub, peerId: string) {

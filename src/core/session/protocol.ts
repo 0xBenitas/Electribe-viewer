@@ -13,6 +13,10 @@ export interface PeerInfo {
   color?: string;
   /** Listener (no machine): never elected host. */
   listener?: boolean;
+  /** Stable per-client id (survives reconnects of the same SessionClient). Lets
+   *  the server evict a stale ghost of us after a fast reconnect, before the old
+   *  socket's close is even noticed. */
+  clientId?: string;
 }
 
 export interface PeerState {

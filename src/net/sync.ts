@@ -15,15 +15,19 @@ export function dispatchServerMessage(msg: ServerMessage): void {
     case 'welcome': {
       // Keep the name we joined with; adopt the server-assigned id.
       store.setSelf(msg.self, store.self?.info ?? { name: '' });
-      for (const peer of msg.peers) store.addPeer(peer);
+      // Reconcile to exactly the room's current peers. On a reconnect this drops
+      // anyone who left while we were down (welcome carries their last device).
+      store.setPeers(msg.peers);
       // No existing host among the others → we're the first joiner, i.e. host.
       const existingHost = msg.peers.find((p) => p.isHost);
       store.setHostId(existingHost ? existingHost.id : msg.self);
       break;
     }
     case 'peer-join':
-      store.addPeer(msg.peer);
+      // A host-promotion peer-join is echoed to the promoted peer too: adopt the
+      // host change but don't add ourselves to our own peer list (ghost/double).
       if (msg.peer.isHost) store.setHostId(msg.peer.id);
+      if (msg.peer.id !== store.self?.id) store.addPeer(msg.peer);
       break;
     case 'peer-leave':
       store.removePeer(msg.peer);

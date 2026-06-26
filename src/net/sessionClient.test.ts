@@ -46,11 +46,13 @@ describe('SessionClient', () => {
     expect(statuses).toContain('connecting');
     socket.onopen?.(null);
     expect(statuses).toContain('open');
-    expect(socket.parsedSent()[0]).toEqual({
+    // join is the first frame; info now also carries a stable clientId.
+    expect(socket.parsedSent()[0]).toMatchObject({
       t: 'join',
       room: 'jam',
       info: { name: 'Bastou' },
     });
+    client.disconnect(); // stop the heartbeat started on open
   });
 
   it('parses inbound messages and ignores malformed frames', () => {
@@ -98,11 +100,130 @@ describe('SessionClient', () => {
     expect(() => client.send({ t: 'ping', ts: 1 })).not.toThrow();
   });
 
-  it('reports closed status', () => {
-    const { socket, statuses, client } = setup();
-    client.connect();
-    socket.onclose?.(null);
-    expect(statuses[statuses.length - 1]).toBe('closed');
-    expect(vi.isMockFunction(socket.send)).toBe(false); // sanity: real fake used
+  it('reconnects with backoff after an unexpected drop, re-joining on reopen', () => {
+    vi.useFakeTimers();
+    try {
+      const sockets: FakeSocket[] = [];
+      const statuses: SessionStatus[] = [];
+      const client = new SessionClient({
+        url: 'ws://x',
+        room: 'jam',
+        info: { name: 'Bastou' },
+        onMessage: () => {},
+        onStatus: (s) => statuses.push(s),
+        factory: () => {
+          const s = new FakeSocket();
+          sockets.push(s);
+          return s;
+        },
+      });
+      client.connect();
+      sockets[0]!.onopen?.(null);
+      expect(statuses).toContain('open');
+
+      sockets[0]!.onclose?.(null); // unexpected drop
+      expect(statuses[statuses.length - 1]).toBe('connecting'); // retrying, not dead
+      expect(sockets).toHaveLength(1); // not reconnected yet (waiting on backoff)
+
+      vi.advanceTimersByTime(10_000); // let the backoff fire
+      expect(sockets).toHaveLength(2); // a fresh socket was opened
+      sockets[1]!.onopen?.(null);
+      expect(sockets[1]!.parsedSent()[0]).toMatchObject({
+        t: 'join',
+        room: 'jam',
+        info: { name: 'Bastou' },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reports closed and stops retrying on a deliberate disconnect', () => {
+    vi.useFakeTimers();
+    try {
+      const sockets: FakeSocket[] = [];
+      const statuses: SessionStatus[] = [];
+      const client = new SessionClient({
+        url: 'ws://x',
+        room: 'jam',
+        info: { name: 'B' },
+        onMessage: () => {},
+        onStatus: (s) => statuses.push(s),
+        factory: () => {
+          const s = new FakeSocket();
+          sockets.push(s);
+          return s;
+        },
+      });
+      client.connect();
+      sockets[0]!.onopen?.(null);
+
+      client.disconnect();
+      expect(statuses[statuses.length - 1]).toBe('closed');
+      expect(sockets[0]!.closed).toBe(true);
+
+      // A trailing close (ws fires it after our close()) must NOT reconnect.
+      sockets[0]!.onclose?.(null);
+      vi.advanceTimersByTime(10_000);
+      expect(sockets).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reconnects a half-open socket that stops ponging (watchdog)', () => {
+    vi.useFakeTimers();
+    try {
+      const sockets: FakeSocket[] = [];
+      const client = new SessionClient({
+        url: 'ws://x',
+        room: 'jam',
+        info: { name: 'B' },
+        onMessage: () => {},
+        factory: () => {
+          const s = new FakeSocket();
+          sockets.push(s);
+          return s;
+        },
+      });
+      client.connect();
+      sockets[0]!.onopen?.(null); // open; heartbeat starts, lastPongAt = now
+      // Never deliver a pong → after the pong timeout the watchdog forces a
+      // reconnect even though 'close' never fired (the half-open mobile case).
+      vi.advanceTimersByTime(14_000);
+      expect(sockets[0]!.closed).toBe(true); // forced closed by the watchdog
+      expect(sockets.length).toBeGreaterThanOrEqual(2); // and it reopened
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('declares the link lost after repeated failures but keeps retrying', () => {
+    vi.useFakeTimers();
+    try {
+      const sockets: FakeSocket[] = [];
+      const statuses: SessionStatus[] = [];
+      const client = new SessionClient({
+        url: 'ws://x',
+        room: 'jam',
+        info: { name: 'B' },
+        onMessage: () => {},
+        onStatus: (s) => statuses.push(s),
+        factory: () => {
+          const s = new FakeSocket();
+          sockets.push(s);
+          return s;
+        },
+      });
+      client.connect(); // socket[0], never opens
+      for (let i = 0; i < 8; i++) {
+        sockets[sockets.length - 1]!.onclose?.(null); // drop → schedule reconnect
+        vi.advanceTimersByTime(20_000); // fire the (capped) backoff → next open
+      }
+      expect(statuses).toContain('closed'); // gave up visibly at some point
+      expect(sockets.length).toBeGreaterThan(6); // …yet kept retrying
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

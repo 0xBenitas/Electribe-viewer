@@ -25,8 +25,6 @@ export interface SessionConnectConfig {
 const SNAPSHOT_INTERVAL_MS = 150;
 /** How often the host broadcasts the shared transport (ms). */
 const TRANSPORT_INTERVAL_MS = 200;
-/** How often we ping the server to measure latency (ms). */
-const PING_INTERVAL_MS = 3000;
 
 export function useSessionSync(
   config: SessionConnectConfig | null,
@@ -40,22 +38,34 @@ export function useSessionSync(
 
     const listenOnly = config.listenOnly ?? false;
     useSessionStore.getState().setSelf('', { name: config.name, listener: listenOnly });
+
+    // Wire payload of our last broadcast snapshot; reset on (re)connect so we
+    // rebroadcast under the fresh peer id the server assigns on reconnect.
+    let lastKey = '';
+
     const client = new SessionClient({
       url: config.url,
       room: config.room,
       info: { name: config.name, listener: listenOnly },
       onMessage: dispatchServerMessage,
       onStatus: (status) => {
-        // Surface link health; on an unexpected drop, shed now-stale peers.
-        if (status === 'closed') useSessionStore.getState().connectionLost();
-        else useSessionStore.getState().setLinkStatus(status);
+        if (status === 'open') {
+          useSessionStore.getState().setLinkStatus('open');
+          // Server forgot our device under the new peer id → force a resend.
+          lastKey = '';
+        } else if (status === 'closed') {
+          // Only fires on a deliberate disconnect (teardown); transient drops
+          // stay 'connecting' so the auto-reconnect keeps the peers/transport.
+          useSessionStore.getState().connectionLost();
+        } else {
+          useSessionStore.getState().setLinkStatus(status); // 'connecting' (incl. reconnect)
+        }
       },
     });
     client.connect();
     setActiveClient(client);
 
     // A listener has no machine to replicate.
-    let lastKey = '';
     const deviceTimer = listenOnly
       ? null
       : setInterval(() => {
@@ -72,9 +82,7 @@ export function useSessionSync(
           client.sendDevice({ ...snapshot, updatedAt: Date.now() });
         }, SNAPSHOT_INTERVAL_MS);
 
-    const pingTimer = setInterval(() => {
-      client.send({ t: 'ping', ts: performance.now() });
-    }, PING_INTERVAL_MS);
+    // (Liveness ping/pong + half-open detection are owned by SessionClient now.)
 
     // Only the host broadcasts the shared tempo. While running, send every tick
     // (bar/beat are valid before BPM warms up). On stop, send ONE final frame so
@@ -96,7 +104,6 @@ export function useSessionSync(
     return () => {
       if (deviceTimer) clearInterval(deviceTimer);
       clearInterval(transportTimer);
-      clearInterval(pingTimer);
       setActiveClient(null);
       client.disconnect();
       useSessionStore.getState().reset();

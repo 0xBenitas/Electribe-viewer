@@ -36,11 +36,16 @@ interface SessionStore {
   setLinkStatus: (status: LinkStatus) => void;
   setLatency: (ms: number) => void;
   addPeer: (peer: PeerState) => void;
+  /** Replace the whole peer set — used to reconcile on a (re)connect `welcome`,
+   *  dropping any peer that left while we were briefly disconnected. */
+  setPeers: (peers: PeerState[]) => void;
   removePeer: (id: string) => void;
   /** Apply a peer's snapshot, dropping stale (out-of-order) frames. */
   applySnapshot: (peerId: string, snapshot: DeviceSnapshot) => void;
   setTransport: (transport: TransportTick | null) => void;
-  /** Socket dropped: mark closed and drop now-stale peers/transport (keep self). */
+  /** Link given up on (deliberate teardown, or after many failed reconnects):
+   *  mark closed and drop now-stale peers/transport. Transient drops stay
+   *  'connecting' — the auto-reconnect keeps the peers/transport meanwhile. */
   connectionLost: () => void;
   reset: () => void;
 }
@@ -66,6 +71,9 @@ export const useSessionStore = create<SessionStore>((set) => ({
   // merge so we don't drop a device snapshot we already hold.
   addPeer: (peer) =>
     set((s) => ({ peers: { ...s.peers, [peer.id]: { ...s.peers[peer.id], ...peer } } })),
+
+  setPeers: (list) =>
+    set(() => ({ peers: Object.fromEntries(list.map((p) => [p.id, p])) })),
 
   removePeer: (id) =>
     set((s) => {

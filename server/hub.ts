@@ -87,19 +87,30 @@ export class SessionHub {
   }
 
   private join(peerId: string, room: string, info: PeerInfo): Outbound[] {
-    this.members.delete(peerId); // tolerate a re-join
+    this.members.delete(peerId); // tolerate a same-id re-join
+    const out: Outbound[] = [];
+    // Fast reconnect: a stale ghost of the SAME client may still sit in the room
+    // (its socket's close not yet noticed). Evict it so we don't duplicate
+    // ourselves, nor strand the host role on a dead peer. Tell the others to drop
+    // it; the rejoining peer learns the clean set from its own `welcome` below.
+    if (info.clientId) {
+      for (const [id, m] of [...this.members]) {
+        if (m.room === room && m.state.info.clientId === info.clientId) {
+          this.members.delete(id);
+          out.push({ recipients: this.roomPeerIds(room), msg: { t: 'peer-leave', peer: id } });
+        }
+      }
+    }
     const existing = this.roomPeerStates(room);
     // A listener (no machine) is never host; the first real player is.
     const isHost = !info.listener && !existing.some((p) => p.isHost);
     const state: PeerState = { id: peerId, info, isHost };
     this.members.set(peerId, { room, state, joinedAt: this.now() });
 
-    const out: Outbound[] = [
-      {
-        recipients: [peerId],
-        msg: { t: 'welcome', self: peerId, peers: existing },
-      },
-    ];
+    out.push({
+      recipients: [peerId],
+      msg: { t: 'welcome', self: peerId, peers: existing },
+    });
     const others = this.others(peerId, room);
     if (others.length) {
       out.push({ recipients: others, msg: { t: 'peer-join', peer: state } });

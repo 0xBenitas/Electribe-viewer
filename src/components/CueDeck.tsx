@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { useSharedTransport } from '../model/useClock.ts';
+import { resolveSharedTransport, useSharedTransport } from '../model/useClock.ts';
+import { useClockStore } from '../store/clock.ts';
 import { useCueStore } from '../store/cues.ts';
 import { useSessionStore } from '../store/session.ts';
 import {
   buildCue,
+  cueLandBar,
   cueStatus,
   CUE_LABELS,
   CUE_ORDER,
@@ -42,8 +44,32 @@ export function CueDeck() {
   }, [running, currentBar, pruneCues, clearCues]);
 
   const fire = (kind: CueKind) => {
-    if (!transport || !transport.running) return;
-    const cue = buildCue(kind, transport.bar + 1);
+    // Re-derive the shared transport from a SINGLE store snapshot so bar/beat and
+    // transportAt are sampled consistently (the rendered `transport` may lag by a
+    // tick). Adaptive landing bar: the host fires at bar+1 ; a remote peer absorbs
+    // the relay round-trip so a cue tapped late in the bar lands cleanly (+2, or
+    // more under heavy lag) instead of a bar too early on the host's timeline.
+    const ss = useSessionStore.getState();
+    const now = Date.now();
+    const ownsClock = ss.self === null || ss.self.id === ss.hostId;
+    const t = resolveSharedTransport({
+      local: useClockStore.getState(),
+      transport: ss.transport,
+      transportAt: ss.transportAt,
+      ownsClock,
+      now,
+    });
+    if (!t || !t.running) return;
+    const landAtBar = cueLandBar({
+      bar: t.bar,
+      beat: t.beat,
+      bpm: t.bpm,
+      source: t.source,
+      now,
+      transportAt: ss.transportAt,
+      latencyMs: ss.latencyMs,
+    });
+    const cue = buildCue(kind, landAtBar);
     sendCue(cue); // to peers (no-op when solo)
     addCue({ cue, peer: selfId }); // optimistic local feedback
   };
