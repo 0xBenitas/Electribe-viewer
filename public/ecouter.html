@@ -6,10 +6,26 @@
     <title>JAMBOREE — Écoute en direct</title>
     <meta name="theme-color" content="#0a0a0b" />
     <!--
-      Page d'écoute autonome : un simple lecteur audio HTML qui lit le flux
-      MP3 Icecast (/live) via le HTTPS de JAMBOREE. AUCUN React, AUCUN Web MIDI
-      → marche sur tous les navigateurs mobiles, iPhone (Safari) compris. Le son
+      Page d'écoute autonome : un simple lecteur audio HTML qui lit le flux MP3
+      Icecast (/live) via le HTTPS de JAMBOREE. AUCUN React, AUCUN Web MIDI →
+      marche sur tous les navigateurs mobiles, iPhone (Safari) compris. Le son
       d'une jam est un flux MP3 unique ; le ?room= n'est qu'un libellé.
+
+      Vérité importante : le flux n'existe QUE quand l'hôte pousse son mix vers
+      Icecast (ffmpeg → /live, cf. scripts/diffuser-le-live.sh). Être présent dans
+      la session WS ne diffuse AUCUN son. Tant que personne ne pousse, /live = 404.
+
+      Conception (machine à états, pilotée par les events <audio>, ZÉRO fetch sur
+      /live pour ne pas ouvrir d'auditeur Icecast fantôme) :
+        - le 1er play() part DANS le clic (politique autoplay iOS) → « bénit »
+          l'élément même si /live est encore en 404 ; les reprises suivantes
+          peuvent donc partir hors-geste via setTimeout ;
+        - on distingue play() rejeté en NotAllowedError (autoplay bloqué →
+          « touche ▶ ») de tout autre échec / event 'error' (= 404 pas de source
+          → « personne ne diffuse », on patiente et on se rebranche tout seul) ;
+        - un jeton `epoch` invalide les handlers/timers d'une tentative annulée
+          (anti-course, anti-flicker) ; le retry se met en pause quand l'onglet
+          passe en arrière-plan et reprend au retour (batterie mobile).
     -->
     <style>
       :root { color-scheme: dark; }
@@ -38,10 +54,14 @@
       }
       button#play:active { transform: translate(3px, 3px); box-shadow: 3px 3px 0 #000; }
       button#play.playing { background: #ff8787; }
+      button#play.waiting { background: #ffd43b; }
       .status { font-size: 13px; color: #9a9aa2; min-height: 18px; }
       .dot { display: inline-block; width: 9px; height: 9px; border-radius: 999px;
              background: #3a3a40; margin-right: 7px; vertical-align: middle; }
       .dot.live { background: #a9e34b; box-shadow: 0 0 10px #a9e34b; }
+      .dot.waiting { background: #ffd43b; box-shadow: 0 0 10px #ffd43b;
+                     animation: pulse 1.1s ease-in-out infinite; }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
       .hint { font-size: 11px; color: #6a6a72; max-width: 320px; line-height: 1.5; }
     </style>
   </head>
@@ -56,8 +76,9 @@
 
     <div class="status"><span class="dot" id="dot"></span><span id="statusText">Touche pour lancer le live</span></div>
     <div class="hint">
-      Le son passe par le flux de la jam. S'il n'y a pas de son, c'est que
-      personne ne diffuse pour l'instant — réessaie quand la jam tourne.
+      Le son passe par le flux de la jam. Tant que l'hôte ne diffuse pas, il n'y a
+      rien à écouter : laisse cette page ouverte, elle se branche toute seule dès
+      que la jam démarre.
     </div>
 
     <audio id="audio" preload="none" playsinline></audio>
@@ -74,50 +95,118 @@
           'Session <b>' + room.replace(/[<>&]/g, '') + '</b>';
       }
 
-      function setStatus(txt, live) {
-        statusText.textContent = txt;
-        dot.className = live ? 'dot live' : 'dot';
+      // --- machine à états -------------------------------------------------
+      var wantPlaying = false; // l'utilisateur veut écouter (même en attente de flux)
+      var epoch = 0;           // invalide les handlers/timers d'une tentative annulée
+      var retryTimer = null;
+      var RETRY_MS = 3000;
+
+      function clearRetry() { if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; } }
+
+      // mode bouton : 'idle' (▶ Écouter) | 'live'/'waiting' (⏸ Stop, couleur du dot)
+      function paint(text, dotState, btnMode) {
+        statusText.textContent = text;
+        dot.className = 'dot' + (dotState ? ' ' + dotState : '');
+        btn.classList.toggle('playing', btnMode === 'live');
+        btn.classList.toggle('waiting', btnMode === 'waiting');
+        btn.textContent = btnMode === 'idle' ? '▶ Écouter' : '⏸ Stop';
       }
 
-      function start() {
-        // Cache-bust + (re)assign on each play so a dropped stream can resume.
+      function setState(s) {
+        switch (s) {
+          case 'idle':       paint('Touche pour lancer le live', '', 'idle'); break;
+          case 'paused':     paint('En pause', '', 'idle'); break;
+          case 'connecting': paint('Connexion au live…', '', 'live'); break;
+          case 'live':       paint('En direct', 'live', 'live'); break;
+          case 'buffering':  paint('Mise en mémoire…', 'live', 'live'); break;
+          case 'waiting':    paint('Personne ne diffuse — j’attends la jam…', 'waiting', 'waiting'); break;
+          case 'blocked':    paint('Le live tourne — touche ▶ pour lancer le son', 'waiting', 'idle'); break;
+        }
+      }
+
+      function attempt(my) {
+        if (!wantPlaying || my !== epoch) return;
+        setState('connecting');
+        // Réassigner la src (avec cache-bust) ouvre une connexion neuve et
+        // réinitialise une erreur précédente. C'est notre SEULE connexion à /live.
         audio.src = '/live?_=' + Date.now();
         var p = audio.play();
-        setStatus('Connexion au live…', false);
-        if (p && p.catch) {
-          p.catch(function () {
-            setStatus('Lecture bloquée — retouche le bouton.', false);
-            btn.classList.remove('playing');
-            btn.textContent = '▶ Écouter';
+        if (p && p.then) {
+          p.then(function () {
+            /* succès : l'event 'playing' confirmera l'état "En direct" */
+          }).catch(function (err) {
+            if (my !== epoch || !wantPlaying) return; // tentative périmée/annulée
+            if (err && err.name === 'NotAllowedError') {
+              // Le navigateur bloque la lecture (geste manquant / mode éco iOS).
+              // Le flux existe peut-être : on attend un nouveau tap, pas de retry.
+              wantPlaying = false;
+              clearRetry();
+              setState('blocked');
+            } else {
+              // Échec de chargement (typiquement /live = 404, pas de source).
+              scheduleRetry(my);
+            }
           });
         }
       }
+
+      function scheduleRetry(my) {
+        if (!wantPlaying || my !== epoch) return;
+        setState('waiting');
+        clearRetry();
+        if (document.hidden) return; // on reprendra au retour au premier plan
+        retryTimer = setTimeout(function () { attempt(my); }, RETRY_MS);
+      }
+
+      function start() {
+        // Appelé DANS le clic → play() synchrone = geste utilisateur préservé (iOS).
+        wantPlaying = true;
+        var my = ++epoch;
+        clearRetry();
+        attempt(my);
+      }
+
       function stop() {
+        wantPlaying = false;
+        epoch++; // invalide tout handler/timer en vol (y compris l'event 'error' du teardown)
+        clearRetry();
         audio.pause();
         audio.removeAttribute('src');
         audio.load();
+        setState('paused');
       }
 
       btn.addEventListener('click', function () {
-        if (btn.classList.contains('playing')) {
-          stop();
-          btn.classList.remove('playing');
-          btn.textContent = '▶ Écouter';
-          setStatus('En pause', false);
-        } else {
-          start();
-          btn.classList.add('playing');
-          btn.textContent = '⏸ Stop';
-        }
+        // En état 'blocked', wantPlaying est false → un tap relance start() (geste frais).
+        if (wantPlaying) stop();
+        else start();
       });
 
-      audio.addEventListener('playing', function () { setStatus('En direct', true); });
-      audio.addEventListener('waiting', function () { setStatus('Mise en mémoire…', false); });
-      audio.addEventListener('stalled', function () { setStatus('Flux interrompu…', false); });
+      audio.addEventListener('playing', function () {
+        if (!wantPlaying) return;
+        clearRetry();
+        setState('live');
+      });
+      // 'waiting'/'stalled' = rebuffering transitoire d'un flux DÉJÀ en cours, pas fatal.
+      function onBuffer() { if (wantPlaying && !audio.paused) setState('buffering'); }
+      audio.addEventListener('waiting', onBuffer);
+      audio.addEventListener('stalled', onBuffer);
+      // 'error' = la source a échoué (404 pas de source, ou coupure réseau).
       audio.addEventListener('error', function () {
-        setStatus('Pas de live pour l’instant — réessaie quand la jam tourne.', false);
-        btn.classList.remove('playing');
-        btn.textContent = '▶ Écouter';
+        if (!wantPlaying) return; // ignore l'error/abort déclenché par stop()
+        scheduleRetry(epoch);
+      });
+      // 'ended' = l'hôte a coupé la diffusion (fin de flux propre) → on attend
+      // et on se rebranche dès qu'il relance.
+      audio.addEventListener('ended', function () {
+        if (wantPlaying) scheduleRetry(epoch);
+      });
+
+      // Onglet caché : on stoppe le churn de reconnexion ; on reprend au retour
+      // si on voulait écouter mais que le son n'est pas (re)parti.
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) { clearRetry(); return; }
+        if (wantPlaying && audio.paused && !retryTimer) attempt(epoch);
       });
     </script>
   </body>

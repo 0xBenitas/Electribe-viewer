@@ -77,11 +77,33 @@ jam en **MP3** (seul format universel mobile), servi en HTTPS par le hub Caddy.
 - **Page d'écoute** : `public/ecouter.html` (statique, AUCUN React/Web MIDI → marche
   sur iPhone) lit `/live`. Lien : `https://jamboreeeeeeee.duckdns.org/ecouter.html?room=<room>`,
   copié par le bouton « 🔊 Lien d'écoute » du bandeau de session.
-- **L'hôte pousse le son** de sa jam (sortie carte son / loopback type BlackHole) :
+- **L'hôte pousse le son** de sa jam. Le serveur NINJAM **ne mixe pas** : le mix
+  complet (tout le monde, calé au tempo) n'existe que dans le client de l'hôte
+  (Jamtaba/Reaper). On capte donc sa **sortie audio** via un loopback (BlackHole
+  macOS / VB-CABLE Windows / `.monitor` PulseAudio Linux) et on la pousse en MP3.
+  Le plus simple = le script versionné :
   ```sh
-  ffmpeg -re -i <entrée-audio> -c:a libmp3lame -b:a 128k -content_type audio/mpeg \
-    -f mp3 icecast://source:Jamboree-Live-2026@jamboreeeeeeee.duckdns.org:8000/live
+  ./scripts/diffuser-le-live.sh            # auto-détecte le loopback selon l'OS
+  ./scripts/diffuser-le-live.sh --list     # liste les périphériques audio
   ```
+  Commande équivalente (entrée temps réel = loopback) :
+  ```sh
+  # Linux (monitor PulseAudio/PipeWire) :
+  ffmpeg -f pulse -i default.monitor -c:a libmp3lame -b:a 128k -ar 44100 -ac 2 \
+    -content_type audio/mpeg -f mp3 \
+    icecast://source:Jamboree-Live-2026@jamboreeeeeeee.duckdns.org:8000/live
+  ```
+  ⚠️ Pièges (sinon ça « marche pas ») :
+  - **PAS de `-re`** pour une entrée carte son/loopback (temps réel déjà cadencé) ;
+    `-re` ne sert qu'à cadencer une entrée **fichier**.
+  - Les flags `-reconnect*` sont des options de l'**entrée HTTP**, pas de la sortie
+    icecast → ils ne fiabilisent **pas** le push. La reprise = la **boucle de
+    supervision** du script (ou `systemd Restart=always`).
+  - Le push est en **clair sur le port 8000** (`icecast://` n'a pas de TLS) — viser
+    le 8000 en direct, **pas** le 443 (réservé aux auditeurs via Caddy).
+- **Vérifier la chaîne sans toucher à ta carte son** : `./scripts/tester-la-diffusion.sh`
+  pousse une tonalité (ou un fichier) vers `/live` → ouvre `ecouter.html`, tu dois
+  entendre « En direct ».
 - Limite v1 : **un seul flux** `/live` (une jam à la fois). Audio par room = plus tard.
 
 ## Recette de Phase 0 (« vous jammez déjà »)

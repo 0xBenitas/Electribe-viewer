@@ -36,23 +36,29 @@ direct, zéro setup pour eux. Le son vit dans NINJAM. Chemin progressif (chaque
 - **Option A — ce soir, zéro code** : un pote ouvre **Jamtaba en écoute** dans la
   room et le route vers Discord (partage d'écran *avec son*, ou *virtual audio
   cable* → micro Discord).
-- **Option B — propre** : le **serveur NINJAM expose un flux** (Ogg/MP3 via sa
-  config) → écoute via une **URL** (navigateur/VLC). Quick win : afficher ce
-  « lien d'écoute en direct » dans le panneau Audio + activer le stream dans
-  `ninjamsrv.cfg`.
+- **Option B — propre : FAITE** (écoute web Icecast, 2026-06-23). ⚠️ Rectification
+  importante : le **serveur NINJAM NE mixe PAS et n'expose AUCUN flux** — c'est un
+  pur relais de blobs OGG par utilisateur ; le mix complet n'existe que dans un
+  **client** (celui de l'hôte). Donc le flux `/live` est alimenté par **l'hôte qui
+  pousse sa sortie** (loopback + ffmpeg → Icecast, cf. `scripts/diffuser-le-live.sh`),
+  pas par `ninjamsrv`. Écoute via `ecouter.html` (lien dans le bandeau de session).
 - **Option C — le bot Discord** = l'objectif final. À réfléchir, donc capturé ici :
 
-  **Insight clé** : ne PAS faire du bot un client NINJAM. Le serveur NINJAM émet
-  déjà un flux mixé (Option B) ; le bot est un simple **relais « flux → Discord »** :
-  il lit l'URL, transcode en Opus (ffmpeg) et pousse dans le salon vocal
-  (Node + `@discordjs/voice`, cohérent avec la stack). Le bot ignore le protocole
-  NINJAM → bien plus simple et robuste.
+  **Insight clé** : ne PAS faire du bot un client NINJAM. Le **flux Icecast `/live`**
+  (alimenté par le push de l'hôte, Option B) existe déjà ; le bot est un simple
+  **relais « URL Icecast → Discord »** : il lit `https://…/live`, transcode en Opus
+  (ffmpeg) et pousse dans le salon vocal (Node + `@discordjs/voice`, cohérent avec la
+  stack). Le bot ignore le protocole NINJAM → bien plus simple et robuste.
+  ⚠️ Prérequis réel : que **quelqu'un pousse** vers `/live` (aujourd'hui = l'hôte ;
+  un « /live toujours allumé » exigerait un client NINJAM headless mixeur sur le VPS
+  — R&D, aucun outil mûr n'existe, cf. ci-dessous).
 
   **En notre faveur** : les auditeurs Discord sont passifs → la latence (délai
   NINJAM + buffers) ne les gêne pas. Pas de contrainte temps-réel.
 
   **Décisions à trancher** :
-  - source audio : flux serveur NINJAM (recommandé) vs client headless ;
+  - source audio : le push de l'hôte vers `/live` (= aujourd'hui) vs un client
+    NINJAM headless mixeur sur le VPS pour un live permanent (R&D, cf. ci-dessous) ;
   - hébergement : un service Docker de plus sur le VPS ;
   - déclenchement : slash commands (`/listen`, `/stop`) vs auto avec la jam vs
     bouton « inviter le bot » dans le cockpit ;
