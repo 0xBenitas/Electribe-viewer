@@ -69,7 +69,13 @@ jam en **MP3** (seul format universel mobile), servi en HTTPS par le hub Caddy.
 
 - **Service** `jamboree-icecast` (image `moul/icecast`) dans
   `/opt/omexom/docker-compose.yml` ; port **8000/TCP publié** (source push) +
-  **UFW ouvert** (`ufw allow 8000/tcp`). Mot de passe source = `Jamboree-Live-2026`.
+  **UFW ouvert** (`ufw allow 8000/tcp`). Le **mot de passe source n'est PAS dans
+  ce repo** (public) : il vit dans le compose privé sur le VPS (env
+  `ICECAST_SOURCE_PASSWORD`). Pour diffuser, exporte-le côté hôte :
+  `export JAMBOREE_PASS=…` (demande-le à l'admin). ⚠️ Le port 8000 est ouvert au
+  monde → le mot de passe source est la **seule** barrière : garde-le fort et
+  hors du repo. Rotation = éditer l'env du compose puis **recréer** le conteneur
+  (`docker compose up -d jamboree-icecast`), pas un simple restart.
 - **Caddy** : `handle /live*` → `reverse_proxy jamboree-icecast:8000 { flush_interval -1 }`
   (pas de buffering = vrai live) dans le vhost `jamboreeeeeeee.duckdns.org`.
   ⚠️ Le `Caddyfile` est bind-monté → après édition, **restart** `omexom-caddy`
@@ -91,7 +97,7 @@ jam en **MP3** (seul format universel mobile), servi en HTTPS par le hub Caddy.
   # Linux (monitor PulseAudio/PipeWire) :
   ffmpeg -f pulse -i default.monitor -c:a libmp3lame -b:a 128k -ar 44100 -ac 2 \
     -content_type audio/mpeg -f mp3 \
-    icecast://source:Jamboree-Live-2026@jamboreeeeeeee.duckdns.org:8000/live
+    "icecast://source:${JAMBOREE_PASS}@jamboreeeeeeee.duckdns.org:8000/live"
   ```
   ⚠️ Pièges (sinon ça « marche pas ») :
   - **PAS de `-re`** pour une entrée carte son/loopback (temps réel déjà cadencé) ;

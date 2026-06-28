@@ -27,7 +27,8 @@
 #   JAMBOREE_HOST   (jamboreeeeeeee.duckdns.org)   hôte Icecast
 #   JAMBOREE_PORT   (8000)                          port source Icecast (EN CLAIR,
 #                                                   pas le 443 : icecast:// n'a pas de TLS)
-#   JAMBOREE_PASS   (Jamboree-Live-2026)            mot de passe source
+#   JAMBOREE_PASS   (REQUIS — pas de défaut)        mot de passe source Icecast
+#                                                   (hors repo ; demande-le à l'admin)
 #   JAMBOREE_MOUNT  (live)                          mountpoint
 #   JAMBOREE_BITRATE(128k)                          débit MP3
 #
@@ -35,9 +36,15 @@ set -euo pipefail
 
 HOST="${JAMBOREE_HOST:-jamboreeeeeeee.duckdns.org}"
 PORT="${JAMBOREE_PORT:-8000}"
-PASS="${JAMBOREE_PASS:-Jamboree-Live-2026}"
+PASS="${JAMBOREE_PASS:-}"
 MOUNT="${JAMBOREE_MOUNT:-live}"
 BITRATE="${JAMBOREE_BITRATE:-128k}"
+
+[ -n "$PASS" ] || {
+  echo "✗ JAMBOREE_PASS non défini (mot de passe source Icecast, hors repo)." >&2
+  echo "  Exporte-le avant de diffuser :  export JAMBOREE_PASS='…'   (demande-le à l'admin)" >&2
+  exit 1
+}
 
 command -v ffmpeg >/dev/null 2>&1 || {
   echo "✗ ffmpeg introuvable. Installe-le : macOS 'brew install ffmpeg' · Linux 'apt install ffmpeg' · Windows https://ffmpeg.org" >&2
