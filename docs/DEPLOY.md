@@ -59,7 +59,10 @@ d'omexom possède déjà 80/443). Il est intégré au hub :
   les sources upstream), port **2049/TCP publié** sur l'hôte + **UFW ouvert** (`ufw allow
   2049/tcp`). Les clients **natifs** (Jamtaba / Reaper) se connectent en direct sur
   `jamboreeeeeeee.duckdns.org:2049` (le navigateur ne porte pas l'audio). Config :
-  `infra/ninjam/ninjamsrv.cfg` (anonyme, 8 users max, BPM 120 / BPI 16, pas d'enreg.).
+  `infra/ninjam/ninjamsrv.cfg` (anonyme, 10 users max = 8 musiciens + le mixeur
+  « radio » ninjamcast + marge, BPM 120 / BPI 16, pas d'enreg.). ⚠️ Les directives
+  sont celles du parseur upstream (`AnonymousUsers yes`, pas `DefaultUser`) : une
+  directive inconnue est ignorée en silence, le serveur démarre quand même.
 
 ## Écoute web sur mobile (Icecast) — 2026-06-23
 
@@ -67,15 +70,28 @@ Pour qu'un pote écoute le live dans un **navigateur mobile** (iPhone Safari
 inclus), sans client NINJAM : un mini-serveur **Icecast** rediffuse le mix de la
 jam en **MP3** (seul format universel mobile), servi en HTTPS par le hub Caddy.
 
-- **Service** `jamboree-icecast` (image `moul/icecast`) dans
-  `/opt/omexom/docker-compose.yml` ; port **8000/TCP publié** (source push) +
-  **UFW ouvert** (`ufw allow 8000/tcp`). Le **mot de passe source n'est PAS dans
-  ce repo** (public) : il vit dans le compose privé sur le VPS (env
-  `ICECAST_SOURCE_PASSWORD`). Pour diffuser, exporte-le côté hôte :
+- **Service** `jamboree-icecast` (image dérivée `infra/icecast`, `FROM moul/icecast`
+  + `icecast.xml` custom : ajoute le port source **8001 en shoutcast-compat**,
+  interne au réseau Docker, monté sur `/live`) dans `/opt/omexom/docker-compose.yml` ;
+  port **8000/TCP publié** (source push manuel + admin) + **UFW ouvert** (`ufw allow
+  8000/tcp`) — le 8001 n'est PAS publié. Les mots de passe du xml sont les
+  placeholders upstream (`hackme`), remplacés au démarrage par le `start.sh` de
+  l'image depuis les env. Le **mot de passe source n'est PAS dans ce repo**
+  (public) : il vit dans le compose privé sur le VPS (env
+  `ICECAST_SOURCE_PASSWORD`). Pour diffuser à la main, exporte-le côté hôte :
   `export JAMBOREE_PASS=…` (demande-le à l'admin). ⚠️ Le port 8000 est ouvert au
   monde → le mot de passe source est la **seule** barrière : garde-le fort et
   hors du repo. Rotation = éditer l'env du compose puis **recréer** le conteneur
   (`docker compose up -d jamboree-icecast`), pas un simple restart.
+- **Mixeur automatique** : service `jamboree-ninjamcast` (build `infra/ninjamcast`,
+  binaire `ninjamcast` du dépôt NINJAM officiel, fork maintenu jeffmhopkins,
+  commit épinglé). Il rejoint la session NINJAM comme un client « radio » sans
+  carte son (`anonymous:radio`, horloge logicielle), **mixe tous les musiciens**,
+  encode en MP3 (LAME 128k) et pousse le flux vers Icecast via le port source
+  8001 → **`/live` est alimenté en continu, l'hôte n'a RIEN à lancer**. Le mot de
+  passe source arrive par l'env `SC_PASSWORD` (compose privé). Quand personne ne
+  joue, le flux diffuse du silence — la page d'écoute reste « En direct ».
+  Redéployer : `cd /opt/omexom && docker compose up -d --build jamboree-ninjamcast`.
 - **Caddy** : `handle /live*` → `reverse_proxy jamboree-icecast:8000 { flush_interval -1 }`
   (pas de buffering = vrai live) dans le vhost `jamboreeeeeeee.duckdns.org`.
   ⚠️ Le `Caddyfile` est bind-monté → après édition, **restart** `omexom-caddy`
@@ -83,10 +99,12 @@ jam en **MP3** (seul format universel mobile), servi en HTTPS par le hub Caddy.
 - **Page d'écoute** : `public/ecouter.html` (statique, AUCUN React/Web MIDI → marche
   sur iPhone) lit `/live`. Lien : `https://jamboreeeeeeee.duckdns.org/ecouter.html?room=<room>`,
   copié par le bouton « 🔊 Lien d'écoute » du bandeau de session.
-- **L'hôte pousse le son** de sa jam. Le serveur NINJAM **ne mixe pas** : le mix
-  complet (tout le monde, calé au tempo) n'existe que dans le client de l'hôte
-  (Jamtaba/Reaper). On capte donc sa **sortie audio** via un loopback (BlackHole
-  macOS / VB-CABLE Windows / `.monitor` PulseAudio Linux) et on la pousse en MP3.
+- **Push manuel = fallback seulement** (depuis `jamboree-ninjamcast`, `/live` est
+  alimenté tout seul — voir ci-dessus). Utile si le mixeur auto est HS ou pour
+  diffuser un mix « oreilles de l'hôte » (le serveur NINJAM **ne mixe pas** : le
+  mix complet calé au tempo n'existe que dans chaque client). On capte alors la
+  **sortie audio** de l'hôte via un loopback (BlackHole macOS / VB-CABLE Windows /
+  `.monitor` PulseAudio Linux) et on la pousse en MP3.
   Le plus simple = le script versionné :
   ```sh
   ./scripts/diffuser-le-live.sh            # auto-détecte le loopback selon l'OS
