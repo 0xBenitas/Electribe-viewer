@@ -10,7 +10,10 @@
       TB-303 vintage = audio-only DIN sync), + qui est hôte, + réglages MIDI Sync.
 - [ ] **Validation hardware** : émission clock Electribe (`0xF8`/transport) +
       recette audio Phase 0 sur le VPS (jam à deux via Jamtaba, cf. `docs/DEPLOY.md`).
-- [ ] **Build `ninjamsrv`** à valider au premier déploiement (pas d'image officielle).
+- [x] **Build `ninjamsrv`** validé : compilé et en service sur le VPS depuis juin 2026.
+- [ ] **Première jam à deux** : audit de préparation + déroulé dans
+      `docs/PREMIERE-JAM.md` (04/09/2026). Serveur prêt ; il manque Jamtaba sur le
+      PC de l'hôte et un pote. Compte rendu à remplir dans le même fichier.
 
 ## Quick wins (petits, fort impact)
 
