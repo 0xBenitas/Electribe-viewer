@@ -28,6 +28,8 @@ import {
 } from './sysex/parser.ts';
 import { buildCurrentPatternDump, patchPartSound } from './sysex/write.ts';
 import { patternToParams } from './hydrate.ts';
+import { DumpAwaiter } from './dumpAwaiter.ts';
+import { saveDump } from './dumpVault.ts';
 import type { ConnectionState } from './types.ts';
 import type { PartSound } from '../db/types.ts';
 import { useConnectionStore } from '../store/connection.ts';
@@ -39,6 +41,12 @@ import { useSysexStore } from '../store/sysex.ts';
 
 let client: MIDIClient | null = null;
 const throttler = new CCThrottler((msg) => client?.send(msg));
+
+/** Attente du prochain Current Pattern Dump (0x40) après une demande 0x10. */
+const dumpAwaiter = new DumpAwaiter();
+const DUMP_REPLY_TIMEOUT_MS = 2500;
+/** Debounce de la re-demande sur Program Change (la machine émet Bank Select + PC). */
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Profile of the connected machine; gates Electribe-specific SysEx/CC handling. */
 let activeProfileId: string | null = null;
@@ -99,6 +107,14 @@ function onMessage({ channel, data, timeStamp }: MidiMessage): void {
         const pattern = parsePatternDump(raw);
         useCurrentPatternStore.getState().setPattern(pattern, raw);
         useParamsStore.getState().hydrate(patternToParams(pattern));
+        dumpAwaiter.deliver(raw);
+        // Coffre (ADR-006) : chaque dump reçu est gardé, best-effort.
+        void saveDump({
+          receivedAt: Date.now(),
+          name: pattern.name,
+          tempo: pattern.tempo,
+          raw,
+        }).catch(() => {});
       } catch {
         // ignore malformed dumps
       }
@@ -113,6 +129,13 @@ function onMessage({ channel, data, timeStamp }: MidiMessage): void {
     } else if (fn === SYSEX_FN.DATA_FORMAT_ERROR) {
       useSysexStore.getState().pushEvent('format-error');
     }
+    return;
+  }
+
+  // Pattern changé sur la machine (Program Change) : le dump en mémoire est
+  // périmé → on le redemande (ADR-006).
+  if ((data[0]! & 0xf0) === 0xc0) {
+    schedulePatternRefresh();
     return;
   }
 
@@ -160,28 +183,62 @@ function connectedChannel(): number | null {
     : null;
 }
 
+function schedulePatternRefresh(): void {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null;
+    void requestCurrentPattern();
+  }, 200);
+}
+
 /**
- * Phase 5b — renvoie un dump complet à la machine : chargé dans l'edit buffer
- * (Current Pattern Dump 0x40, volatile, n'écrase aucun slot). Retourne false si
- * non connecté. La machine répond DATA_LOAD_COMPLETED (0x23) → useSysexStore.
+ * Redemande le pattern courant à la machine (0x10) et attend le dump (0x40).
+ * Résout le dump frais (aussi poussé dans le store + le coffre), ou `null` si
+ * la machine n'a pas répondu / n'est pas connectée.
  */
-export function sendCurrentPatternDump(raw: Uint8Array): boolean {
+export function requestCurrentPattern(): Promise<Uint8Array | null> {
   const gc = connectedChannel();
-  if (gc === null || !client) return false;
-  client.send(buildCurrentPatternDump(gc, raw));
-  useSysexStore.getState().pushEvent('sent');
-  return true;
+  if (gc === null || !client) return Promise.resolve(null);
+  const wait = dumpAwaiter.wait(DUMP_REPLY_TIMEOUT_MS);
+  if (!dumpAwaiter.pending) return wait; // (jamais : wait() vient d'armer)
+  client.send(buildCurrentPatternDumpRequest(gc));
+  return wait;
+}
+
+export type ResendResult = 'sent' | 'offline' | 'no-reply';
+
+/**
+ * Phase 5b — envoie un dump complet dans l'edit buffer de la machine (Current
+ * Pattern Dump 0x40, volatile : le slot n'est écrit que par un Write). ADR-006 :
+ * on redemande TOUJOURS le pattern juste avant, on ne renvoie jamais un dump
+ * périmé ; `mutate` (optionnel) transforme le dump FRAIS avant envoi. La machine
+ * répond DATA_LOAD_COMPLETED (0x23) → useSysexStore.
+ */
+export async function resendCurrentPattern(
+  mutate?: (fresh: Uint8Array) => Uint8Array,
+): Promise<ResendResult> {
+  const gc = connectedChannel();
+  if (gc === null || !client) return 'offline';
+  const sysex = useSysexStore.getState();
+  sysex.pushEvent('refresh');
+  const fresh = await requestCurrentPattern();
+  if (!fresh) {
+    sysex.pushEvent('refresh-error');
+    return 'no-reply';
+  }
+  const name = useCurrentPatternStore.getState().pattern?.name ?? '';
+  client.send(buildCurrentPatternDump(gc, mutate ? mutate(fresh) : fresh));
+  sysex.pushEvent('sent', name ? `pattern « ${name} »` : undefined);
+  return 'sent';
 }
 
 /**
  * Recall des params SysEx-only d'un son sur un part via edit buffer : patche le
- * dump courant et le renvoie. Retourne false si pas de dump courant / non connecté.
+ * dump FRAIS (redemandé à la machine) et le renvoie.
  */
 export function recallSoundEditBuffer(
   partIndex: number,
   sound: PartSound,
-): boolean {
-  const raw = useCurrentPatternStore.getState().raw;
-  if (!raw) return false;
-  return sendCurrentPatternDump(patchPartSound(raw, partIndex, sound));
+): Promise<ResendResult> {
+  return resendCurrentPattern((fresh) => patchPartSound(fresh, partIndex, sound));
 }

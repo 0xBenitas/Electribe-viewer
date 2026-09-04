@@ -77,12 +77,18 @@ export function PresetLibrary() {
 
     const fullRecall = useSysexStore.getState().fullRecallEnabled;
     if (fullRecall) {
-      const sent = recallSoundEditBuffer(activePartId - 1, preset.params);
       setStatus(
-        sent
-          ? `« ${preset.name} » : ${plan.length} params CC + son SysEx (oscillateur, filtre, IFX…) envoyés au part ${activePartId} via edit buffer.`
-          : `« ${preset.name} » : params CC appliqués, mais envoi SysEx impossible (pas de dump courant).`,
+        `« ${preset.name} » : ${plan.length} params CC appliqués ; pattern redemandé à la machine avant l'envoi SysEx…`,
       );
+      void recallSoundEditBuffer(activePartId - 1, preset.params).then((res) => {
+        setStatus(
+          res === 'sent'
+            ? `« ${preset.name} » : ${plan.length} params CC + son SysEx (oscillateur, filtre, IFX…) envoyés au part ${activePartId} via edit buffer.`
+            : res === 'no-reply'
+              ? `« ${preset.name} » : params CC appliqués, mais la machine n'a pas renvoyé son pattern : rien d'envoyé en SysEx (jamais de dump périmé).`
+              : `« ${preset.name} » : params CC appliqués, mais envoi SysEx impossible (machine non connectée).`,
+        );
+      });
     } else {
       setStatus(
         `« ${preset.name} » : ${plan.length} params live appliqués au part ${activePartId}. ` +

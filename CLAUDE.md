@@ -17,7 +17,7 @@ Vérifs (tout doit rester vert) :
 
 ```sh
 npm run typecheck  # tsc app + tests + serveur
-npm test           # vitest (124 tests)
+npm test           # vitest (148 tests)
 npm run lint       # eslint
 npm run build      # tsc + build vite
 ```

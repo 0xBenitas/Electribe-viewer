@@ -22,3 +22,6 @@ coverage
 *.zip
 *.pdf
 electribe_MIDIimp.txt
+
+# config dev locale (tunnel cloudflared), jamais commitée
+vite.config.tunnel.ts

@@ -5,6 +5,7 @@
 // Les tables presets / patternMeta / setlists arriveront en Phase 5+ (version 2).
 import Dexie, { type Table } from 'dexie';
 import type { Preset } from './types.ts';
+import type { DumpRow } from '../midi/dumpVault.ts';
 
 export interface PartMetaRow {
   /** Part id 1..16 (global, indépendant du pattern courant en v1). */
@@ -23,6 +24,7 @@ export class EMXPilotDB extends Dexie {
   partMeta!: Table<PartMetaRow, number>;
   settings!: Table<SettingRow, string>;
   presets!: Table<Preset, string>;
+  dumps!: Table<DumpRow, string>;
 
   constructor() {
     // IndexedDB name kept as-is across the JAMBOREE rename: renaming it would
@@ -35,6 +37,11 @@ export class EMXPilotDB extends Dexie {
     // v2 : Preset Library (Phase 5). Les tables v1 sont héritées automatiquement.
     this.version(2).stores({
       presets: 'id, name, category, *tags, createdAt, updatedAt',
+    });
+    // v3 : coffre des dumps reçus (Phase 5b, ADR-006) — filet de sécurité
+    // avant tout envoi vers l'edit buffer.
+    this.version(3).stores({
+      dumps: 'id, receivedAt',
     });
   }
 }

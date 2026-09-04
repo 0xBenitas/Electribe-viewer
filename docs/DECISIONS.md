@@ -274,3 +274,30 @@ est écarté** (sur-ingénierie pour 1 app + 1 petit serveur ; `src/core` donne 
 la séparation). État courant suivi dans `docs/JAMBOREE.md` ; direction design dans
 `docs/DESIGN.md`. Les ADR ci-dessus restent historiques (nom au moment de la
 décision).
+
+## ADR-006: Jamais renvoyer un dump périmé à la machine (incident du 2026-09-04)
+
+**Contexte.** Le bouton « Renvoyer le pattern intact » (Phase 5b) renvoyait le
+dump brut capturé **à la connexion**, jamais redemandé ensuite. Bastien avait
+changé de pattern sur l'EMX2 entre-temps : le « no-op » a chargé l'ancien pattern
+dans l'edit buffer du pattern sélectionné, qui a semblé « effacé ». Le slot en
+mémoire était intact (spec Korg : 0x40 → « save them to Edit Buffer ») et un
+changement de pattern sur la machine l'a ramené — mais un Write aurait tout perdu.
+
+**Décision.**
+1. **Tout envoi vers l'edit buffer commence par une demande fraîche** (0x10) et
+   attend le 0x40 (`DumpAwaiter`, délai 2,5 s). Sans réponse : rien n'est envoyé,
+   et l'UI le dit (`refresh-error`). `sendCurrentPatternDump(raw)` n'existe plus ;
+   seul `resendCurrentPattern(mutate?)` envoie, et `mutate` s'applique au dump frais.
+2. **Program Change entrant → re-demande** (debounce 200 ms) : le store suit le
+   pattern affiché sur la machine.
+3. **Coffre des dumps** (`dumpVault`, IndexedDB v3, 30 derniers, dédoublonné) :
+   chaque dump reçu est gardé et téléchargeable en `.syx` rejouable (message 0x40
+   complet). Le panneau affiche le nom / tempo / âge du dump en mémoire.
+4. **L'étape 2 (recall SysEx complet) reste verrouillée** tant qu'un ACK 0x23 n'a
+   pas été vu dans la session.
+5. **Texte honnête** : « remplace le contenu de travail du pattern sélectionné ;
+   le slot n'est modifié que par Write ; pour annuler, change de pattern et reviens ».
+
+**Conséquence.** Un envoi prend ~70 ms de plus (aller-retour 0x10/0x40 mesuré à
+63 ms en §5.1). Acceptable pour une action explicite, hors chemin live.
