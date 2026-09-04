@@ -31,8 +31,14 @@ interface AudioStore {
   peers: Record<string, PeerAudio>;
   framesSent: number;
   framesReceived: number;
+  /** Test solo : se réentendre un intervalle plus tard. */
+  selfMonitor: boolean;
+  /** Avertissement non bloquant (ex. pas d'entrée : on écoute seulement). */
+  warning: string | null;
 
   setSupported: (v: boolean) => void;
+  setSelfMonitor: (v: boolean) => void;
+  setWarning: (w: string | null) => void;
   setStatus: (status: AudioStatus, error?: string | null) => void;
   setGrid: (grid: AudioGrid | null) => void;
   setInputs: (inputs: AudioInput[]) => void;
@@ -64,8 +70,12 @@ export const useAudioStore = create<AudioStore>((set) => ({
   peers: {},
   framesSent: 0,
   framesReceived: 0,
+  selfMonitor: false,
+  warning: null,
 
   setSupported: (supported) => set({ supported }),
+  setSelfMonitor: (selfMonitor) => set({ selfMonitor }),
+  setWarning: (warning) => set({ warning }),
   setStatus: (status, error = null) => set({ status, error }),
   setGrid: (grid) => set({ grid }),
   setInputs: (inputs) => set({ inputs }),
@@ -96,5 +106,5 @@ export const useAudioStore = create<AudioStore>((set) => ({
     }),
   sent: () => set((s) => ({ framesSent: s.framesSent + 1 })),
   reset: () =>
-    set({ status: 'off', error: null, grid: null, capturing: false, inputLevel: 0, peers: {}, framesSent: 0, framesReceived: 0 }),
+    set({ status: 'off', error: null, warning: null, grid: null, capturing: false, inputLevel: 0, peers: {}, framesSent: 0, framesReceived: 0 }),
 }));

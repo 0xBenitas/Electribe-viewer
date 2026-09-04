@@ -21,6 +21,27 @@ import {
 } from '../core/audio/grid.ts';
 import { decodeDownFrame, encodeUpFrame } from '../core/session/audioFrame.ts';
 
+/** Id du lecteur « moi » (test solo : se réentendre un intervalle plus tard). */
+export const SELF_ID = '__moi';
+
+/** Message français pour une erreur getUserMedia. */
+export function describeCaptureError(e: unknown): string {
+  const name = e instanceof DOMException ? e.name : '';
+  switch (name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'Accès à l’entrée audio refusé : autorise le « micro » pour ce site (cadenas dans la barre d’adresse), puis réessaie.';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'Aucune entrée audio trouvée sur cet ordinateur : branche ta carte son (ou l’entrée ligne), vérifie Windows → Son → Entrée, puis « activer mon son ». En attendant, tu écoutes seulement.';
+    case 'NotReadableError':
+    case 'AbortError':
+      return 'L’entrée audio est occupée par un autre logiciel (Jamtaba ? un DAW en ASIO ?) : ferme-le, puis « activer mon son ».';
+    default:
+      return `Entrée audio impossible : ${e instanceof Error ? e.message : String(e)}`;
+  }
+}
+
 /** Retard estimé entrée → worklet (ms) ; constant, retranché de l'horodatage. */
 const CAPTURE_LATENCY_MS = 20;
 const RESYNC_MS = 5000;
@@ -201,10 +222,22 @@ class AudioEngine {
         this.resyncTimer = setInterval(() => this.resync(), RESYNC_MS);
       }
       await this.ctx.resume();
-      if (opts.capture) await this.startCapture(opts.deviceId ?? null);
-      else this.stopCapture();
       this.resync();
-      store.setStatus(opts.capture ? 'live' : 'listening');
+      store.setWarning(null);
+      if (!opts.capture) {
+        this.stopCapture();
+        store.setStatus('listening');
+        return;
+      }
+      try {
+        await this.startCapture(opts.deviceId ?? null);
+        store.setStatus('live');
+      } catch (e) {
+        // Pas d'entrée : on n'est pas « en erreur », on écoute seulement.
+        this.stopCapture();
+        store.setStatus('listening');
+        store.setWarning(describeCaptureError(e));
+      }
     } catch (e) {
       store.setStatus('error', e instanceof Error ? e.message : String(e));
     }
@@ -213,9 +246,9 @@ class AudioEngine {
   private async startCapture(deviceId: string | null): Promise<void> {
     const ctx = this.ctx!;
     this.stopCapture();
-    const stream = await navigator.mediaDevices.getUserMedia({
+    const constraints = (id: string | null): MediaStreamConstraints => ({
       audio: {
-        deviceId: deviceId ? { exact: deviceId } : undefined,
+        deviceId: id ? { exact: id } : undefined,
         // Musique, pas voix : aucun traitement.
         echoCancellation: false,
         noiseSuppression: false,
@@ -224,6 +257,18 @@ class AudioEngine {
       },
       video: false,
     });
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints(deviceId));
+    } catch (e) {
+      // L'entrée mémorisée n'existe plus (carte débranchée) : l'entrée par défaut.
+      const name = e instanceof DOMException ? e.name : '';
+      if (deviceId && (name === 'NotFoundError' || name === 'OverconstrainedError')) {
+        stream = await navigator.mediaDevices.getUserMedia(constraints(null));
+      } else {
+        throw e;
+      }
+    }
     this.stream = stream;
     const source = ctx.createMediaStreamSource(stream);
     // Une sortie (muette) reliée à la destination : sans ça, un nœud sans route
@@ -362,7 +407,10 @@ class AudioEngine {
         payload,
       }),
     );
-    useAudioStore.getState().sent();
+    const store = useAudioStore.getState();
+    store.sent();
+    // Test solo : je m'entends un intervalle plus tard, comme mes potes m'entendent.
+    if (store.selfMonitor) this.play(SELF_ID, payload, pos.interval, pos.offsetSamples);
   }
 
   /** Trame binaire reçue du relais (un pair a joué). */
@@ -373,15 +421,29 @@ class AudioEngine {
     if (!grid || !ctx || !master) return;
     const f = decodeDownFrame(bytes);
     if (!f || f.gridId !== grid.id) return;
-    let player = this.players.get(f.peerId);
+    this.play(f.peerId, f.payload, f.interval, f.offsetSamples);
+  }
+
+  /** Programme une tranche d'un pair (ou de moi en test) un intervalle plus tard. */
+  private play(peerId: string, payload: Uint8Array, interval: number, offsetSamples: number): void {
+    const grid = this.grid;
+    const ctx = this.ctx;
+    const master = this.master;
+    if (!grid || !ctx || !master) return;
+    let player = this.players.get(peerId);
     if (!player) {
-      player = new PeerPlayer(ctx, master, f.peerId);
-      this.players.set(f.peerId, player);
+      player = new PeerPlayer(ctx, master, peerId);
+      this.players.set(peerId, player);
       this.syncPlayer(player);
     }
-    const at = playbackSample(grid, { interval: f.interval, offsetSamples: f.offsetSamples });
-    player.push(f.payload, at, Math.round((at / SAMPLE_RATE) * 1e6));
-    useAudioStore.getState().peerChunk(f.peerId, f.interval);
+    const at = playbackSample(grid, { interval, offsetSamples });
+    player.push(payload, at, Math.round((at / SAMPLE_RATE) * 1e6));
+    useAudioStore.getState().peerChunk(peerId, interval);
+  }
+
+  setSelfMonitor(on: boolean): void {
+    useAudioStore.getState().setSelfMonitor(on);
+    if (!on) this.dropPeer(SELF_ID);
   }
 
   setGrid(grid: AudioGrid): void {

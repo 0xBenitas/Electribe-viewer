@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { audioEngine } from '../audio/engine.ts';
+import { audioEngine, SELF_ID } from '../audio/engine.ts';
 import { useAudioStore } from '../store/audio.ts';
 import { useSessionStore } from '../store/session.ts';
 import { useClockStore } from '../store/clock.ts';
@@ -47,6 +47,8 @@ export function JamAudio() {
   const inputLevel = useAudioStore((s) => s.inputLevel);
   const peerAudio = useAudioStore((s) => s.peers);
   const framesSent = useAudioStore((s) => s.framesSent);
+  const warning = useAudioStore((s) => s.warning);
+  const selfMonitor = useAudioStore((s) => s.selfMonitor);
 
   const machineBpm = useClockStore((s) => s.bpm);
 
@@ -133,6 +135,7 @@ export function JamAudio() {
         </p>
       )}
       {error && <p className="text-xs text-red">{error}</p>}
+      {warning && <p className="text-xs text-yellow">{warning}</p>}
 
       {supported && !running && status !== 'starting' && (
         <div className="flex flex-wrap items-center gap-2">
@@ -145,10 +148,18 @@ export function JamAudio() {
                 title="L’entrée de ta carte son où la machine est branchée"
               >
                 <option value="">Entrée par défaut</option>
-                {inputs.map((i) => (
+                {inputs.filter((i) => i.id).map((i) => (
                   <option key={i.id} value={i.id}>{i.label}</option>
                 ))}
               </select>
+              <button
+                onClick={() => void audioEngine.listInputs().catch(() => {})}
+                title="Rafraîchir la liste des entrées (après avoir branché la carte son)"
+                className="btn-acid bg-bg-3 px-2.5 py-2 text-sm text-text-dim"
+                style={{ borderWidth: '2px', boxShadow: '2px 2px 0 #000' }}
+              >
+                ↻
+              </button>
               <button
                 onClick={() => start(true)}
                 className="btn-acid bg-green px-4 py-2 text-sm font-bold text-[#0a1404]"
@@ -206,12 +217,20 @@ export function JamAudio() {
                     className="max-w-full rounded-md border border-line bg-bg-2 px-2 py-1 text-[11px] text-text outline-none"
                   >
                     <option value="">Entrée par défaut</option>
-                    {inputs.map((i) => (
+                    {inputs.filter((i) => i.id).map((i) => (
                       <option key={i.id} value={i.id}>{i.label}</option>
                     ))}
                   </select>
                   <span>{framesSent > 0 ? `${framesSent} tranches envoyées` : 'rien envoyé encore'}</span>
                 </div>
+                <label className="flex items-center gap-2 text-[11px] text-text-dim">
+                  <input
+                    type="checkbox"
+                    checked={selfMonitor}
+                    onChange={(e) => audioEngine.setSelfMonitor(e.target.checked)}
+                  />
+                  M’entendre en décalé (test solo : ma machine me revient un intervalle plus tard, comme pour les autres)
+                </label>
                 {noSignal && (
                   <span className="text-[11px] text-yellow">
                     Aucun signal : vérifie le câble machine → carte son et l’entrée choisie.
@@ -281,8 +300,17 @@ export function JamAudio() {
               <span className="text-[10px] uppercase tracking-[0.16em] text-text-dim">Ce que j’entends</span>
               <div className="w-40"><Meter level={outLevel} color="var(--color-cyan)" /></div>
             </div>
-            {peerList.length === 0 && (
-              <span className="text-[11px] text-text-muted">Personne d’autre pour l’instant. Envoie le lien.</span>
+            {selfMonitor && (
+              <div className="flex flex-wrap items-center gap-3 text-[11px]">
+                <span className="w-28 truncate font-bold text-yellow">moi (test)</span>
+                <div className="min-w-[120px] flex-1"><Meter level={peerAudio[SELF_ID]?.level ?? 0} color="var(--color-yellow)" /></div>
+                <span className="text-text-muted">
+                  {peerAudio[SELF_ID]?.chunks ? `intervalle ${peerAudio[SELF_ID]?.lastInterval}` : 'en attente du prochain intervalle'}
+                </span>
+              </div>
+            )}
+            {peerList.length === 0 && !selfMonitor && (
+              <span className="text-[11px] text-text-muted">Personne d’autre pour l’instant. Envoie le lien, ou coche « M’entendre en décalé » pour tester seul.</span>
             )}
             {peerList.map((p) => {
               const a = peerAudio[p.id];

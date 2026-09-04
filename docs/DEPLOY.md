@@ -73,7 +73,8 @@ sont des fichiers statiques `public/worklets/*.js` copiés dans `dist/` au build
 cockpit. Bande passante : ~96 kb/s par musicien, vers chaque autre membre.
 Test de bout en bout après déploiement : `node scripts/e2e-son.mjs` (Playwright,
 faux micro Chrome) — vérifié le 04/09/2026 : 581 tranches envoyées, 527 reçues
-et jouées, signal en sortie.
+et jouées, signal en sortie. Aussi `scripts/e2e-son-solo.mjs` (auto-écoute décalée)
+et `scripts/e2e-son-nodevice.mjs` (aucune entrée → écoute + avertissement).
 
 ## Port NINJAM de secours (2026-09-04)
 
