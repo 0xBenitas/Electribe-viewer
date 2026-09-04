@@ -133,7 +133,8 @@ export function JamAudio() {
 
       {!supported && (
         <p className="text-xs text-red">
-          Ce navigateur ne sait pas faire le son de la jam : il faut Chrome ou Edge. Tu peux encore suivre le tempo et les cues.
+          Ce navigateur ne sait pas jouer le son de la jam. Sur ordinateur : Chrome ou Edge. Sur téléphone : Chrome
+          sur Android ; iPhone, pas encore. Tu peux quand même suivre le tempo et les cues.
         </p>
       )}
       {error && <p className="text-xs text-red">{error}</p>}

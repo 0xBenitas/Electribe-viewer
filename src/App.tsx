@@ -60,9 +60,9 @@ export function App() {
   useSessionSync(sessionConfig, localMachine);
   const peerMachines = usePeerMachines();
 
-  if (state.status === 'browser-unsupported') {
-    return <BrowserCheck />;
-  }
+  // Sans Web MIDI (téléphone, Safari) on ne bloque plus l'app : le salon et
+  // l'écoute marchent, seul l'état MIDI est remplacé par un encart.
+  const midiStatus = state.status === 'browser-unsupported' ? <BrowserCheck /> : <ConnectionStatus />;
   if (state.status === 'permission-denied') {
     return <PermissionPrompt onRetry={() => void connectMidi()} />;
   }
@@ -114,7 +114,7 @@ export function App() {
         {sessionConfig === null ? (
           <>
             <LobbyBrowser onConnect={setSessionConfig} />
-            <ConnectionStatus />
+            {midiStatus}
             <GuideSection />
           </>
         ) : (
@@ -125,7 +125,7 @@ export function App() {
               onDisconnect={() => setSessionConfig(null)}
             />
             <JamAudio />
-            {!listenOnly && <ConnectionStatus />}
+            {!listenOnly && midiStatus}
           </>
         )}
 
