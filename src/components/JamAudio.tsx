@@ -37,6 +37,7 @@ export function JamAudio() {
   const listener = self?.info.listener ?? false;
 
   const supported = useAudioStore((s) => s.supported);
+  const canCapture = useAudioStore((s) => s.canCapture);
   const status = useAudioStore((s) => s.status);
   const error = useAudioStore((s) => s.error);
   const grid = useAudioStore((s) => s.grid);
@@ -71,8 +72,8 @@ export function JamAudio() {
   const noSignal = silentSince !== null && Date.now() - silentSince > 3000;
 
   useEffect(() => {
-    useAudioStore.getState().setSupported(audioEngine.isSupported());
-    if (audioEngine.isSupported()) void audioEngine.listInputs().catch(() => {});
+    useAudioStore.getState().setSupported(audioEngine.supportsPlayback(), audioEngine.supportsCapture());
+    if (audioEngine.supportsCapture()) void audioEngine.listInputs().catch(() => {});
   }, []);
 
   const lastGridId = useRef<number | null>(null);
@@ -135,8 +136,8 @@ export function JamAudio() {
 
       {!supported && (
         <p className="text-xs text-red">
-          Ce navigateur ne sait pas jouer le son de la jam. Sur ordinateur : Chrome ou Edge. Sur téléphone : Chrome
-          sur Android ; iPhone, pas encore. Tu peux quand même suivre le tempo et les cues.
+          Ce navigateur ne sait pas jouer le son de la jam (pas de Web Audio moderne). Tu peux quand même suivre le
+          tempo et les cues.
         </p>
       )}
       {error && <p className="text-xs text-red">{error}</p>}
@@ -150,7 +151,7 @@ export function JamAudio() {
 
       {supported && !running && status !== 'starting' && (
         <div className="flex flex-wrap items-center gap-2">
-          {!listener && (
+          {!listener && canCapture && (
             <>
               <select
                 value={chosenInput}
@@ -181,14 +182,16 @@ export function JamAudio() {
           )}
           <button
             onClick={() => start(false)}
-            className={listener ? 'btn-acid bg-green px-5 py-2.5 text-base font-bold text-[#0a1404]' : 'btn-acid bg-bg-3 px-4 py-2 text-sm text-text-dim'}
-            style={listener ? undefined : { borderWidth: '2px', boxShadow: '3px 3px 0 #000' }}
+            className={listener || !canCapture ? 'btn-acid bg-green px-5 py-2.5 text-base font-bold text-[#0a1404]' : 'btn-acid bg-bg-3 px-4 py-2 text-sm text-text-dim'}
+            style={listener || !canCapture ? undefined : { borderWidth: '2px', boxShadow: '3px 3px 0 #000' }}
           >
-            {listener ? '🔊 Écouter la jam' : 'Seulement écouter'}
+            {listener || !canCapture ? '🔊 Écouter la jam' : 'Seulement écouter'}
           </button>
           <span className="text-[11px] text-text-muted">
-            {listener
-              ? 'Un tap et tu entends la jam (Chrome ou Edge ; iPhone pas encore).'
+            {listener || !canCapture
+              ? !canCapture && !listener
+                ? 'Ce navigateur écoute mais n’envoie pas de son : pour jouer, Chrome ou Edge sur ordinateur.'
+                : 'Un tap et tu entends la jam.'
               : 'Chrome demandera l’accès au micro : c’est l’entrée audio, pas un micro.'}
           </span>
         </div>
@@ -209,7 +212,7 @@ export function JamAudio() {
                   {muted ? 'COUPÉ · rétablir' : 'couper'}
                 </button>
               ) : (
-                !listener && (
+                !listener && canCapture && (
                   <button
                     onClick={() => start(true)}
                     className="btn-acid bg-green px-2.5 py-1 text-[11px] font-bold text-[#0a1404]"

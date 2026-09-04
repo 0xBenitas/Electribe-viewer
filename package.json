@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "dexie": "^4.4.2",
+    "opus-decoder": "^0.7.12",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zustand": "^5.0.2"

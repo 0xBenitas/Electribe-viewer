@@ -30,7 +30,7 @@
       "who": "Il écoute, c’est tout",
       "needs": [
         "Le lien d’écoute, puis un tap sur « Écouter la jam »",
-        "Rien à installer, Chrome ou Edge sur ordi ou Android"
+        "Rien à installer : ordi, Android ou iPhone"
       ]
     }
   ],
@@ -82,7 +82,7 @@
           "code": "listen"
         },
         {
-          "text": "Ça marche dans Chrome ou Edge, sur ordi ou Android. iPhone : pas encore (Safari ne sait pas décoder ce son)."
+          "text": "Ça marche dans Chrome ou Edge sur ordi, sur Android, et sur iPhone (Safari) grâce à un décodeur embarqué. Pour JOUER, il faut Chrome ou Edge sur ordinateur."
         }
       ]
     },
@@ -119,7 +119,7 @@
     "title": "À savoir avant de râler",
     "items": [
       "Le son de ta machine ne passe pas par l’USB : sans câble audio vers la carte son, personne ne t’entend.",
-      "Chrome ou Edge obligatoires (Web MIDI et son). Safari et Firefox : rien.",
+      "Pour jouer : Chrome ou Edge sur ordinateur (Web MIDI et encodeur). Pour écouter : n’importe quel navigateur récent, iPhone compris.",
       "Le cockpit lit le tempo de l’hôte, il ne synchronise pas les machines : même BPM des deux côtés, à la main.",
       "Un seul onglet Jamboree à la fois : un deuxième embrouille la machine et double le son."
     ]

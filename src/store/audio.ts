@@ -19,7 +19,10 @@ export interface PeerAudio {
 }
 
 interface AudioStore {
+  /** Le navigateur sait JOUER la jam (Web Audio + worklet + décodeur natif ou WASM). */
   supported: boolean;
+  /** Le navigateur sait aussi ENCODER (WebCodecs) : jouer, pas seulement écouter. */
+  canCapture: boolean;
   status: AudioStatus;
   error: string | null;
   grid: AudioGrid | null;
@@ -40,7 +43,7 @@ interface AudioStore {
   /** Avertissement non bloquant (ex. pas d'entrée : on écoute seulement). */
   warning: string | null;
 
-  setSupported: (v: boolean) => void;
+  setSupported: (playback: boolean, capture: boolean) => void;
   setSelfMonitor: (v: boolean) => void;
   setDirectMonitor: (v: boolean) => void;
   setWarning: (w: string | null) => void;
@@ -64,6 +67,7 @@ const peerDefaults: PeerAudio = { level: 0, lastInterval: null, chunks: 0, muted
 
 export const useAudioStore = create<AudioStore>((set) => ({
   supported: false,
+  canCapture: false,
   status: 'off',
   error: null,
   grid: null,
@@ -80,7 +84,7 @@ export const useAudioStore = create<AudioStore>((set) => ({
   directMonitor: true,
   warning: null,
 
-  setSupported: (supported) => set({ supported }),
+  setSupported: (supported, canCapture) => set({ supported, canCapture }),
   setSelfMonitor: (selfMonitor) => set({ selfMonitor }),
   setDirectMonitor: (directMonitor) => set({ directMonitor }),
   setWarning: (warning) => set({ warning }),

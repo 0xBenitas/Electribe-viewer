@@ -330,5 +330,6 @@ Précision d'alignement ≈ ±20 ms (RTT/2 + latence d'entrée supposée 20 ms),
 effet audible avec un intervalle de retard. Intervalle plafonné à 16 s (anneau
 de 32 s). Le flux Icecast `/live` et `ecouter.html` n'entendent PAS le son du
 navigateur (mixeur NINJAM) : à traiter (mix côté hôte → Icecast, ou lecteur
-web). Safari/iPhone : pas de WebCodecs audio → écoute impossible pour l'instant.
+web). Safari/iPhone : sans `AudioDecoder`, un décodeur Opus WebAssembly (`opus-decoder`,
+chargé à la demande) prend le relais pour l'écoute ; l'envoi reste Chrome/Edge.
 Tempo changé par l'hôte = grille ré-ancrée immédiatement (petit trou, assumé).

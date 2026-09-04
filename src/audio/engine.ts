@@ -27,6 +27,16 @@ import {
   type AudioGrid,
 } from '../core/audio/grid.ts';
 import { decodeDownFrame, encodeUpFrame } from '../core/session/audioFrame.ts';
+import type { OpusDecoder } from 'opus-decoder';
+
+/** Chargé à la demande (≈100 Ko de WASM) : Chrome, qui a WebCodecs, ne le télécharge jamais. */
+const loadOpusDecoder = () => import('opus-decoder').then((m) => m.OpusDecoder);
+
+/** Décodeur : natif (WebCodecs) si le navigateur l'a, sinon Opus en WebAssembly
+ *  (Safari / iPhone). `?wasmopus=1` force le WASM pour le tester dans Chrome. */
+const FORCE_WASM =
+  typeof location !== 'undefined' && new URLSearchParams(location.search).has('wasmopus');
+const hasWebCodecsDecoder = (): boolean => typeof AudioDecoder !== 'undefined' && !FORCE_WASM;
 
 /** Id du lecteur « moi » (test solo : se réentendre un intervalle plus tard). */
 export const SELF_ID = '__moi';
@@ -97,6 +107,12 @@ class PeerPlayer {
   readonly node: AudioWorkletNode;
   readonly gain: GainNode;
   private decoder: AudioDecoder | null = null;
+  /** Décodeur Opus WebAssembly (navigateurs sans WebCodecs : Safari, iPhone). */
+  private wasm: OpusDecoder<48000> | null = null;
+  private wasmReady = false;
+  private wasmLoading = false;
+  private wasmGen = 0;
+  private wasmQueue: { payload: Uint8Array; at: number }[] = [];
   private channels = 0;
   private flipRun = 0;
   private closed = false;
@@ -143,10 +159,75 @@ class PeerPlayer {
   push(payload: Uint8Array, at: number): void {
     if (this.closed) return;
     const stereo = ((payload[0] ?? 0) >> 2) & 1 ? 2 : 1;
+    if (!hasWebCodecsDecoder()) {
+      this.pushWasm(payload, at, stereo);
+      return;
+    }
     const dec = this.ensureDecoder(stereo);
     if (!dec || dec.state !== 'configured') return;
     const copy = new Uint8Array(payload); // la trame WS peut être réutilisée
     dec.decode(new EncodedAudioChunk({ type: 'key', timestamp: Math.round((at / SAMPLE_RATE) * 1e6), data: copy }));
+  }
+
+  /** Chemin WebAssembly : même hystérésis mono/stéréo, file d'attente le temps du chargement. */
+  private pushWasm(payload: Uint8Array, at: number, wantChannels: number): void {
+    if (this.wasm && this.channels !== wantChannels) {
+      if (++this.flipRun < CHANNEL_FLIP_HYSTERESIS) wantChannels = this.channels;
+      else {
+        this.wasm.free();
+        this.wasm = null;
+        this.wasmReady = false;
+        this.wasmQueue = [];
+        this.wasmGen++;
+      }
+    } else {
+      this.flipRun = 0;
+    }
+    if (!this.wasm && !this.wasmLoading) {
+      this.channels = wantChannels;
+      this.wasmLoading = true;
+      const gen = ++this.wasmGen;
+      void loadOpusDecoder()
+        .then((Decoder) => {
+          const dec = new Decoder({ channels: wantChannels, sampleRate: SAMPLE_RATE });
+          return dec.ready.then(() => dec);
+        })
+        .then((dec) => {
+          this.wasmLoading = false;
+          if (this.closed || gen !== this.wasmGen) {
+            dec.free();
+            return;
+          }
+          this.wasm = dec;
+          this.wasmReady = true;
+          const q = this.wasmQueue;
+          this.wasmQueue = [];
+          for (const f of q) this.decodeWasm(f.payload, f.at);
+        })
+        .catch((e) => {
+          this.wasmLoading = false;
+          diag.decoderError = String(e);
+        });
+    }
+    const copy = new Uint8Array(payload);
+    if (!this.wasmReady) {
+      if (this.wasmQueue.length < 400) this.wasmQueue.push({ payload: copy, at }); // ≤ 8 s
+      return;
+    }
+    this.decodeWasm(copy, at);
+  }
+
+  private decodeWasm(payload: Uint8Array, at: number): void {
+    const dec = this.wasm;
+    if (!dec || this.closed) return;
+    try {
+      const out = dec.decodeFrame(payload);
+      if (out.samplesDecoded <= 0) return;
+      const channels = out.channelData.map((c) => c.slice(0, out.samplesDecoded));
+      this.node.port.postMessage({ type: 'write', at, channels }, channels.map((b) => b.buffer));
+    } catch (e) {
+      diag.decoderError = String(e);
+    }
   }
 
   private onDecoded(data: AudioData): void {
@@ -190,6 +271,10 @@ class PeerPlayer {
     }
     this.decoder?.close();
     this.decoder = null;
+    this.wasm?.free();
+    this.wasm = null;
+    this.wasmGen++;
+    this.wasmQueue = [];
     this.node.disconnect();
     this.gain.disconnect();
   }
@@ -221,14 +306,28 @@ class AudioEngine {
   private sentPending = 0;
   private chunkPending = new Map<string, { count: number; lastInterval: number }>();
 
-  isSupported(): boolean {
+  /** Sait jouer la jam : Web Audio + worklets + un décodeur (natif ou WASM). */
+  supportsPlayback(): boolean {
     return (
       typeof AudioContext !== 'undefined' &&
+      typeof AudioWorkletNode !== 'undefined' &&
+      (typeof AudioDecoder !== 'undefined' || typeof WebAssembly !== 'undefined')
+    );
+  }
+
+  /** Sait aussi envoyer son propre son : encodeur WebCodecs + entrée audio. */
+  supportsCapture(): boolean {
+    return (
+      this.supportsPlayback() &&
       typeof AudioEncoder !== 'undefined' &&
-      typeof AudioDecoder !== 'undefined' &&
       typeof navigator !== 'undefined' &&
       !!navigator.mediaDevices?.getUserMedia
     );
+  }
+
+  /** Rétro-compatible : « ça peut jouer ». */
+  isSupported(): boolean {
+    return this.supportsPlayback();
   }
 
   get running(): boolean {
@@ -248,16 +347,32 @@ class AudioEngine {
   /** À appeler depuis un geste utilisateur (politique autoplay). */
   async start(opts: { capture: boolean; deviceId?: string | null }): Promise<void> {
     const store = useAudioStore.getState();
-    if (!this.isSupported()) {
-      store.setStatus('error', 'Ce navigateur ne sait pas faire : il faut Chrome ou Edge.');
+    if (!this.supportsPlayback()) {
+      store.setStatus('error', 'Ce navigateur ne sait pas jouer le son de la jam.');
       return;
+    }
+    if (opts.capture && !this.supportsCapture()) {
+      opts = { ...opts, capture: false };
+      store.setWarning('Ce navigateur ne sait pas envoyer ton son (il faut Chrome ou Edge sur ordinateur) : tu écoutes seulement.');
     }
     const myGen = ++this.gen;
     store.setStatus('starting');
     try {
       if (!this.ctx) {
+        // iPhone : jouer même avec l'interrupteur « silencieux » (iOS 17+).
+        const nav = navigator as Navigator & { audioSession?: { type: string } };
+        if (nav.audioSession) {
+          try {
+            nav.audioSession.type = 'playback';
+          } catch {
+            // ancien iOS
+          }
+        }
         // 'interactive' = petits tampons : l'horodatage de capture reste précis.
+        // Créé ET repris DANS le geste utilisateur (avant tout await) : Safari
+        // perd le geste après une promesse et laisserait le contexte suspendu.
         const ctx = new AudioContext({ sampleRate: SAMPLE_RATE, latencyHint: 'interactive' });
+        void ctx.resume().catch(() => {});
         await ctx.audioWorklet.addModule('/worklets/capture.js');
         await ctx.audioWorklet.addModule('/worklets/player.js');
         if (myGen !== this.gen) {
@@ -688,6 +803,8 @@ class AudioEngine {
       outputLevel: this.outputLevel(),
       clockOffset: clockSync.offset,
       grid: this.grid,
+      decoder: hasWebCodecsDecoder() ? 'webcodecs' : 'wasm',
+      canCapture: this.supportsCapture(),
     };
   }
 }

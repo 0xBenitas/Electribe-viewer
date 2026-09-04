@@ -47,8 +47,8 @@ Jamtaba n'est plus nécessaire. Dans la session, panneau **SON** : choisir
 l'entrée de la carte son, « Jouer : activer mon son ». L'hôte règle la grille
 (BPM × temps par intervalle). Chacun entend les autres avec un intervalle de
 retard (principe NINJAM), calé sur la même grille. Auditeurs : « Écouter » puis
-« Écouter la jam » (Chrome/Edge). Jamtaba reste en mode expert (guide, dernière
-section). ⚠️ `/live` et `ecouter.html` n'entendent pas ce son (ils écoutent le
+« Écouter la jam » (Chrome/Edge, Android, iPhone via décodeur WebAssembly de
+secours). Jamtaba reste en mode expert (guide, dernière section). ⚠️ `/live` et `ecouter.html` n'entendent pas ce son (ils écoutent le
 mixeur NINJAM) : à traiter.
 
 ## Le mode d'emploi est dans l'app

@@ -65,7 +65,7 @@ export function LobbyBrowser({ onConnect }: Props) {
     const r = targetRoom.trim() || 'jam';
     const s = server.trim();
     savePrefs({ name: n, room: r, server: s });
-    if (listenOnly && audioEngine.isSupported()) void audioEngine.start({ capture: false });
+    if (listenOnly && audioEngine.supportsPlayback()) void audioEngine.start({ capture: false });
     onConnect({ url: s, room: r, name: n, listenOnly });
   };
 
