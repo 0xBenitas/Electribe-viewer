@@ -54,6 +54,17 @@ export function JamAudio() {
   const [bpm, setBpm] = useState<string>('');
   const [bpi, setBpi] = useState<number>(16);
   const [outLevel, setOutLevel] = useState(0);
+  // « Aucun signal » seulement après 3 s de silence continu (pas sur un creux).
+  const [silentSince, setSilentSince] = useState<number | null>(null);
+  useEffect(() => {
+    if (!capturing || muted) {
+      setSilentSince(null);
+      return;
+    }
+    if (inputLevel >= 0.002) setSilentSince(null);
+    else setSilentSince((t) => t ?? Date.now());
+  }, [inputLevel, capturing, muted]);
+  const noSignal = silentSince !== null && Date.now() - silentSince > 3000;
 
   useEffect(() => {
     useAudioStore.getState().setSupported(audioEngine.isSupported());
@@ -201,7 +212,7 @@ export function JamAudio() {
                   </select>
                   <span>{framesSent > 0 ? `${framesSent} tranches envoyées` : 'rien envoyé encore'}</span>
                 </div>
-                {inputLevel < 0.002 && !muted && (
+                {noSignal && (
                   <span className="text-[11px] text-yellow">
                     Aucun signal : vérifie le câble machine → carte son et l’entrée choisie.
                   </span>
