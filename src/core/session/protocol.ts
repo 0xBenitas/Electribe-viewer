@@ -74,6 +74,8 @@ export interface LobbyInfo {
   host?: string;
   /** The host is streaming a real (connected) machine — the jam is "live". */
   hasHostWithMachine: boolean;
+  /** Members that sent browser audio in the last few seconds (ADR-007). */
+  audioPeers?: number;
 }
 
 /** Messages a client sends to the server. */

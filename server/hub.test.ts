@@ -191,8 +191,8 @@ describe('SessionHub', () => {
 
       const rooms = lobbiesOf(hub, 'a')!;
       expect(rooms).toEqual([
-        { room: 'cave', count: 2, players: 2, host: 'A', hasHostWithMachine: false },
-        { room: 'garage', count: 1, players: 1, host: 'C', hasHostWithMachine: false },
+        { room: 'cave', count: 2, players: 2, host: 'A', hasHostWithMachine: false, audioPeers: 0 },
+        { room: 'garage', count: 1, players: 1, host: 'C', hasHostWithMachine: false, audioPeers: 0 },
       ]);
     });
 
@@ -225,7 +225,7 @@ describe('SessionHub', () => {
       // 'ghost' only ever asks for lobbies — it must not appear or create a room.
       const rooms = lobbiesOf(hub, 'ghost')!;
       expect(rooms).toEqual([
-        { room: 'cave', count: 1, players: 1, host: 'A', hasHostWithMachine: false },
+        { room: 'cave', count: 1, players: 1, host: 'A', hasHostWithMachine: false, audioPeers: 0 },
       ]);
       // A real joiner afterwards sees only 'a', never 'ghost'.
       const welcome = to(
@@ -280,5 +280,21 @@ describe('SessionHub', () => {
       hub.disconnect('a');
       expect(hub.gridOf('jam')).toBeNull();
     });
+  });
+
+  it('le salon compte les membres qui envoient du son (5 s)', () => {
+    let t = 1000;
+    const hub = new SessionHub(() => t);
+    hub.handle('a', { t: 'join', room: 'jam', info: { name: 'A' } });
+    hub.handle('b', { t: 'join', room: 'jam', info: { name: 'B' } });
+    const lobbies = () => {
+      const out = hub.handle('x', { t: 'lobbies' });
+      return out[0]!.msg.t === 'lobbies' ? out[0]!.msg.rooms[0]!.audioPeers : -1;
+    };
+    expect(lobbies()).toBe(0);
+    hub.audioRecipients('a');
+    expect(lobbies()).toBe(1);
+    t += 6000;
+    expect(lobbies()).toBe(0);
   });
 });

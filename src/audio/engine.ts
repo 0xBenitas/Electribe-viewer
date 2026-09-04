@@ -462,7 +462,7 @@ class AudioEngine {
   }
 
   setGrid(grid: AudioGrid): void {
-    const changed = !this.grid || this.grid.id !== grid.id;
+    const changed = !this.grid || this.grid.id !== grid.id || this.grid.anchor !== grid.anchor;
     this.grid = grid;
     useAudioStore.getState().setGrid(grid);
     if (changed) {

@@ -204,6 +204,11 @@ function LobbyRow({
               🎹
             </span>
           )}
+          {(lobby.audioPeers ?? 0) > 0 && (
+            <span className="text-[11px]" title="Du son passe dans le navigateur">
+              🔊
+            </span>
+          )}
         </div>
         <div className="truncate text-[11px] uppercase tracking-[0.1em] text-text-dim">
           {people}

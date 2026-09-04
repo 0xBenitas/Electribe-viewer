@@ -28,7 +28,12 @@ interface Member {
   room: string;
   state: PeerState;
   joinedAt: number;
+  /** Last time this member sent a binary audio frame (ADR-007), 0 = never. */
+  audioAt: number;
 }
+
+/** A member counts as "sending audio" this long after its last frame. */
+export const AUDIO_ACTIVE_MS = 5000;
 
 export class SessionHub {
   private readonly members = new Map<string, Member>();
@@ -73,7 +78,9 @@ export class SessionHub {
    */
   audioRecipients(peerId: string): string[] {
     const member = this.members.get(peerId);
-    return member ? this.others(peerId, member.room) : [];
+    if (!member) return [];
+    member.audioAt = this.now();
+    return this.others(peerId, member.room);
   }
 
   /** Current grid of a room, or null if the room has no member. */
@@ -128,7 +135,7 @@ export class SessionHub {
     // A listener (no machine) is never host; the first real player is.
     const isHost = !info.listener && !existing.some((p) => p.isHost);
     const state: PeerState = { id: peerId, info, isHost };
-    this.members.set(peerId, { room, state, joinedAt: this.now() });
+    this.members.set(peerId, { room, state, joinedAt: this.now(), audioAt: 0 });
     let grid = this.grids.get(room);
     if (!grid) {
       grid = { id: 1, bpm: 120, bpi: 16, anchor: this.now() };
@@ -208,12 +215,14 @@ export class SessionHub {
     return [...byRoom.entries()]
       .map(([room, members]) => {
         const host = members.find((m) => m.state.isHost);
+        const now = this.now();
         return {
           room,
           count: members.length,
           players: members.filter((m) => !m.state.info.listener).length,
           host: host?.state.info.name,
           hasHostWithMachine: host?.state.device != null,
+          audioPeers: members.filter((m) => m.audioAt > 0 && now - m.audioAt < AUDIO_ACTIVE_MS).length,
         };
       })
       .sort((a, b) => b.count - a.count || a.room.localeCompare(b.room));
