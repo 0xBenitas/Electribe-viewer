@@ -8,7 +8,7 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`https://jamboreeeeeeee.duckdns.org/?room=${room}`, { waitUntil: 'networkidle' });
-await page.getByPlaceholder('Bastou').fill('Solo');
+await page.getByLabel('Ton nom').fill('Solo');
 await page.getByRole('button', { name: 'Créer / rejoindre' }).click();
 await page.waitForSelector('text=Session «');
 await page.getByRole('button', { name: /Jouer : activer mon son/ }).click();

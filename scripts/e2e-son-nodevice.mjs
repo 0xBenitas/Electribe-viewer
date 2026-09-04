@@ -8,7 +8,7 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`https://jamboreeeeeeee.duckdns.org/?room=e2e-nodev-${Date.now()}`, { waitUntil: 'networkidle' });
-await page.getByPlaceholder('Bastou').fill('SansEntree');
+await page.getByLabel('Ton nom').fill('SansEntree');
 await page.getByRole('button', { name: 'Créer / rejoindre' }).click();
 await page.waitForSelector('text=Session «');
 await page.getByRole('button', { name: /Jouer : activer mon son/ }).click();

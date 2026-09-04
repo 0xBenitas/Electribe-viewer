@@ -20,7 +20,7 @@ async function open(tag, name) {
   page.on('pageerror', (e) => errors[tag].push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors[tag].push('console: ' + m.text()); });
   await page.goto(`${BASE}/?room=${room}`, { waitUntil: 'networkidle', timeout: 30000 });
-  await page.getByPlaceholder('Bastou').fill(name);
+  await page.getByLabel('Ton nom').fill(name);
   return page;
 }
 const a = await open('a', 'Alice');

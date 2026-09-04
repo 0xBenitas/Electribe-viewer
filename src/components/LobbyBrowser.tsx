@@ -87,26 +87,6 @@ export function LobbyBrowser({ onConnect }: Props) {
         </span>
       </div>
 
-      {/* Your name — required once, then remembered. */}
-      <label className="flex flex-col gap-1 text-xs">
-        <span className="text-text-dim">Ton nom</span>
-        <input
-          ref={nameRef}
-          className={`${inputCls} max-w-xs ${needName ? 'border-red' : ''}`}
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            if (needName) setNeedName(false);
-          }}
-          placeholder="Bastou"
-        />
-        {needName && (
-          <span className="text-[11px] text-red">
-            Entre ton nom pour rejoindre une session.
-          </span>
-        )}
-      </label>
-
       {/* Live sessions. */}
       <div className="flex flex-col gap-2">
         {lobbies.length === 0 ? (
@@ -129,11 +109,29 @@ export function LobbyBrowser({ onConnect }: Props) {
         )}
       </div>
 
-      {/* Create / join a session by name (private rooms, or your own). */}
+      {/* Play: your name (required once, then remembered) + create / join by name. */}
       <div className="flex flex-col gap-1.5 border-t-2 border-black/30 pt-3">
         <span className="text-[11px] uppercase tracking-[0.14em] text-text-dim">
-          ou — créer / rejoindre par nom
+          pour jouer — ton nom, puis créer / rejoindre une session
         </span>
+        <label className="flex flex-col gap-1 text-xs">
+          <input
+            ref={nameRef}
+            className={`${inputCls} max-w-xs ${needName ? 'border-red' : ''}`}
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (needName) setNeedName(false);
+            }}
+            placeholder="Ton nom (ex. Bastou)"
+            aria-label="Ton nom"
+          />
+          {needName && (
+            <span className="text-[11px] text-red">
+              Entre ton nom pour rejoindre une session.
+            </span>
+          )}
+        </label>
         <form
           className="flex flex-wrap items-center gap-2"
           onSubmit={(e) => {
@@ -206,6 +204,7 @@ function LobbyRow({
     (listeners > 0 ? ` · ${listeners} à l’écoute` : '');
   return (
     <div
+      data-room={lobby.room}
       className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[13px] border-2 border-black bg-bg-3 px-4 py-3"
       style={{ boxShadow: '2px 2px 0 #000' }}
     >
@@ -216,19 +215,20 @@ function LobbyRow({
           boxShadow: '0 0 10px var(--color-green)',
         }}
       />
-      <div className="min-w-0 flex-1">
+      {/* Le nom garde une largeur minimale : sur mobile, les boutons passent à la ligne. */}
+      <div className="min-w-[170px] flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate font-display text-base font-bold text-text">
+          <span className="min-w-0 flex-1 truncate font-display text-base font-bold text-text">
             {lobby.room}
           </span>
           {lobby.hasHostWithMachine && (
-            <span className="text-[11px]" title="Une machine est branchée">
+            <span className="shrink-0 text-[11px]" title="Une machine est branchée">
               🎹
             </span>
           )}
           {(lobby.audioPeers ?? 0) > 0 && (
             <span
-              className="pill-acid bg-green px-2 py-0.5 text-[9px] font-bold tracking-[0.14em] text-[#0a1404]"
+              className="pill-acid shrink-0 bg-green px-2 py-0.5 text-[9px] font-bold tracking-[0.14em] text-[#0a1404]"
               title="Du son passe dans le navigateur en ce moment"
             >
               SON EN DIRECT
