@@ -26,6 +26,7 @@ export function SessionBar({ room, server, onDisconnect }: Props) {
   const self = useSessionStore((s) => s.self);
   const linkStatus = useSessionStore((s) => s.linkStatus);
   const latencyMs = useSessionStore((s) => s.latencyMs);
+  const lastError = useSessionStore((s) => s.lastError);
   const transport = useSharedTransport();
 
   const copyLink = () => {
@@ -61,6 +62,7 @@ export function SessionBar({ room, server, onDisconnect }: Props) {
           {linkStatus === 'connecting' ? 'connexion…' : 'connexion perdue'}
         </span>
       )}
+      {lastError && <span className="text-red">{lastError}</span>}
       {self && <span className="text-text-dim">toi : {self.info.name}</span>}
       {latencyMs !== null && (
         <span className="text-text-dim">{latencyMs} ms</span>

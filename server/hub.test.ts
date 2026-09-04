@@ -270,8 +270,8 @@ describe('SessionHub', () => {
       hub.handle('b', { t: 'join', room: 'jam', info: { name: 'B' } });
       hub.handle('l', { t: 'join', room: 'jam', info: { name: 'L', listener: true } });
       hub.handle('z', { t: 'join', room: 'autre', info: { name: 'Z' } });
-      expect(hub.audioRecipients('a').sort()).toEqual(['b', 'l']);
-      expect(hub.audioRecipients('nobody')).toEqual([]);
+      expect(hub.audioRecipients('a', 240).sort()).toEqual(['b', 'l']);
+      expect(hub.audioRecipients('nobody', 240)).toEqual([]);
     });
 
     it('la grille meurt avec la room', () => {
@@ -292,9 +292,99 @@ describe('SessionHub', () => {
       return out[0]!.msg.t === 'lobbies' ? out[0]!.msg.rooms[0]!.audioPeers : -1;
     };
     expect(lobbies()).toBe(0);
-    hub.audioRecipients('a');
+    hub.audioRecipients('a', 240);
     expect(lobbies()).toBe(1);
     t += 6000;
     expect(lobbies()).toBe(0);
+  });
+
+  describe('durcissement (audit 2026-09-04)', () => {
+    const join = (hub: SessionHub, id: string, room = 'jam', extra: Record<string, unknown> = {}) =>
+      hub.handle(id, { t: 'join', room, info: { name: id.toUpperCase(), ...extra } });
+
+    it('ignore les messages inconnus ou malformés sans planter', () => {
+      const hub = new SessionHub(() => 1);
+      for (const bad of [null, 'x', { t: 'x' }, { t: 'join' }, { t: 'join', room: 'r' }, { t: 'ping', ts: 'a' }]) {
+        expect(hub.handle('a', bad)).toEqual([]);
+      }
+    });
+
+    it('ne diffuse jamais le clientId, et prévient le socket évincé', () => {
+      const hub = new SessionHub(() => 1);
+      join(hub, 'a', 'jam', { clientId: 'secret' });
+      const out = join(hub, 'b', 'jam', { clientId: 'other' });
+      const welcome = to(out, 'b');
+      expect(JSON.stringify(welcome?.msg)).not.toContain('secret');
+      expect(JSON.stringify(to(out, 'a')?.msg)).not.toContain('other');
+      // même client qui se reconnecte : l'ancien socket est évincé et prévenu
+      const out2 = join(hub, 'a2', 'jam', { clientId: 'secret' });
+      expect(to(out2, 'a')?.msg).toEqual({ t: 'evicted' });
+      expect(to(out2, 'b')?.msg).toMatchObject({ t: 'peer-leave', peer: 'a' });
+    });
+
+    it('changer de room = quitter proprement l’ancienne', () => {
+      const hub = new SessionHub(() => 1);
+      join(hub, 'a', 'A');
+      join(hub, 'b', 'A');
+      const out = join(hub, 'a', 'B');
+      expect(to(out, 'b')?.msg).toMatchObject({ t: 'peer-leave', peer: 'a' });
+      expect(hub.gridOf('A')).not.toBeNull(); // b y est encore
+      hub.disconnect('b');
+      expect(hub.gridOf('A')).toBeNull();
+    });
+
+    it('un auditeur n’émet pas d’audio, une trame trop grosse non plus', () => {
+      const hub = new SessionHub(() => 1);
+      join(hub, 'a');
+      join(hub, 'l', 'jam', { listener: true });
+      expect(hub.audioRecipients('l', 240)).toEqual([]);
+      expect(hub.audioRecipients('a', 5000)).toEqual([]);
+      expect(hub.audioRecipients('a', 240)).toEqual(['l']);
+    });
+
+    it('limite le débit audio et JSON par membre', () => {
+      let t = 1000;
+      const hub = new SessionHub(() => t);
+      join(hub, 'a');
+      join(hub, 'b');
+      let ok = 0;
+      for (let i = 0; i < 200; i++) if (hub.audioRecipients('a', 240).length) ok++;
+      expect(ok).toBe(80);
+      t = 2100; // nouvelle fenêtre
+      expect(hub.audioRecipients('a', 240)).toEqual(['b']);
+      let pongs = 0;
+      for (let i = 0; i < 100; i++) if (hub.handle('a', { t: 'ping', ts: i }).length) pongs++;
+      expect(pongs).toBe(40);
+    });
+
+    it('refuse la 17e personne dans une room et la 65e room', () => {
+      const hub = new SessionHub(() => 1);
+      for (let i = 0; i < 16; i++) join(hub, `m${i}`);
+      const out = join(hub, 'late');
+      expect(to(out, 'late')?.msg).toEqual({ t: 'error', code: 'room-full' });
+      const hub2 = new SessionHub(() => 1);
+      for (let i = 0; i < 64; i++) join(hub2, `r${i}`, `room${i}`);
+      expect(to(join(hub2, 'x', 'room-de-trop'), 'x')?.msg).toEqual({ t: 'error', code: 'too-many-rooms' });
+    });
+
+    it('balaie les fantômes muets depuis 30 s', () => {
+      let t = 0;
+      const hub = new SessionHub(() => t);
+      join(hub, 'a');
+      join(hub, 'b');
+      t = 20000;
+      hub.handle('b', { t: 'ping', ts: 1 });
+      t = 35000;
+      const { removed, out } = hub.sweep();
+      expect(removed).toEqual(['a']);
+      expect(to(out, 'b')?.msg).toMatchObject({ t: 'peer-leave', peer: 'a' });
+    });
+
+    it('la même grille n’est pas ré-ancrée', () => {
+      const hub = new SessionHub(() => 1);
+      join(hub, 'a');
+      expect(hub.handle('a', { t: 'grid', bpm: 120, bpi: 16 })).toEqual([]);
+      expect(hub.handle('a', { t: 'grid', bpm: 121, bpi: 16 }).length).toBe(1);
+    });
   });
 });

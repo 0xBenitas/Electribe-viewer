@@ -7,6 +7,13 @@
 // Tout le monde entend l'intervalle précédent des autres, calé sur la même
 // grille (principe NINJAM), sans rien installer. Chrome / Edge (WebCodecs).
 //
+// Durci après l'audit du 2026-09-04 : horodatage de capture corrigé des
+// latences réelles, encodeur jamais privé d'entrée (le mute coupe l'envoi, pas
+// l'encodage), position de lecture portée par le timestamp du chunk (plus de
+// file parallèle), lecteurs fermés pour de bon et réconciliés avec la room,
+// plafond de lecteurs, fenêtre de validité des tranches, garde de génération
+// sur start/stop, stats poussées par lot.
+//
 // Singleton module, comme `bridge` pour le MIDI. L'UI passe par `useAudioStore`.
 
 import { clockSync } from './clock.ts';
@@ -23,6 +30,8 @@ import { decodeDownFrame, encodeUpFrame } from '../core/session/audioFrame.ts';
 
 /** Id du lecteur « moi » (test solo : se réentendre un intervalle plus tard). */
 export const SELF_ID = '__moi';
+/** Lecteurs simultanés max (chacun ≈ 12 Mo d'anneau + un décodeur). */
+export const MAX_PLAYERS = 16;
 
 /** Message français pour une erreur getUserMedia. */
 export function describeCaptureError(e: unknown): string {
@@ -42,10 +51,17 @@ export function describeCaptureError(e: unknown): string {
   }
 }
 
-/** Retard estimé entrée → worklet (ms) ; constant, retranché de l'horodatage. */
-const CAPTURE_LATENCY_MS = 20;
+/** Latence d'entrée supposée quand la piste ne la déclare pas (ms). */
+const DEFAULT_INPUT_LATENCY_MS = 20;
 const RESYNC_MS = 5000;
+const STATS_FLUSH_MS = 250;
 const OPUS_FRAME_US = 20000;
+/** Une tranche plus vieille que ça à l'arrivée est jetée (déjà passée). */
+const LATE_WINDOW_SAMPLES = SAMPLE_RATE; // 1 s
+/** … et plus en avance que ça aussi (horloge de l'émetteur fausse). */
+const EARLY_WINDOW_SAMPLES = 20 * SAMPLE_RATE;
+/** Bascule mono/stéréo du décodeur seulement après N tranches cohérentes. */
+const CHANNEL_FLIP_HYSTERESIS = 5;
 
 interface CaptureMessage {
   heartbeat?: boolean;
@@ -72,15 +88,18 @@ const diag = {
   workletInputs: -2,
   ctxTime: 0,
   track: '' as string,
+  droppedLate: 0,
+  droppedEarly: 0,
+  inputLatencyMs: 0,
 };
 
 class PeerPlayer {
   readonly node: AudioWorkletNode;
   readonly gain: GainNode;
   private decoder: AudioDecoder | null = null;
-  private channels = 2;
-  /** Position de lecture de chaque tranche envoyée au décodeur, dans l'ordre. */
-  private playAt: number[] = [];
+  private channels = 0;
+  private flipRun = 0;
+  private closed = false;
 
   constructor(ctx: AudioContext, master: AudioNode, readonly id: string) {
     this.node = new AudioWorkletNode(ctx, 'jam-player', {
@@ -95,40 +114,47 @@ class PeerPlayer {
     };
   }
 
-  private ensureDecoder(stereo: boolean): AudioDecoder {
-    const channels = stereo ? 2 : 1;
-    if (this.decoder && this.channels === channels) return this.decoder;
-    this.decoder?.close();
-    this.channels = channels;
-    this.decoder = new AudioDecoder({
+  /** Décodeur configuré pour `channels` ; ne bascule qu'après une série cohérente. */
+  private ensureDecoder(wantChannels: number): AudioDecoder | null {
+    if (this.decoder && this.channels === wantChannels) {
+      this.flipRun = 0;
+      return this.decoder;
+    }
+    if (this.decoder) {
+      // Bit stéréo du TOC contrôlé par l'émetteur : pas de churn de décodeurs.
+      if (++this.flipRun < CHANNEL_FLIP_HYSTERESIS) return this.decoder.state === 'configured' ? this.decoder : null;
+      this.decoder.close();
+    }
+    this.flipRun = 0;
+    this.channels = wantChannels;
+    const dec = new AudioDecoder({
       output: (data) => this.onDecoded(data),
       error: (e) => {
-        // Décodeur cassé : on le recrée à la prochaine tranche.
         diag.decoderError = String(e);
-        this.decoder = null;
-        this.playAt = [];
+        this.decoder = null; // recréé à la prochaine tranche
       },
     });
-    this.decoder.configure({ codec: 'opus', sampleRate: SAMPLE_RATE, numberOfChannels: channels });
-    return this.decoder;
+    dec.configure({ codec: 'opus', sampleRate: SAMPLE_RATE, numberOfChannels: wantChannels });
+    this.decoder = dec;
+    return dec;
   }
 
-  push(payload: Uint8Array, at: number, timestampUs: number): void {
-    // Bit « s » du TOC Opus : mono ou stéréo, pour configurer le décodeur.
-    const stereo = ((payload[0] ?? 0) >> 2) & 1 ? true : false;
+  /** `at` = échantillon de grille où jouer la tranche ; porté par le timestamp. */
+  push(payload: Uint8Array, at: number): void {
+    if (this.closed) return;
+    const stereo = ((payload[0] ?? 0) >> 2) & 1 ? 2 : 1;
     const dec = this.ensureDecoder(stereo);
-    if (dec.state !== 'configured') return;
+    if (!dec || dec.state !== 'configured') return;
     const copy = new Uint8Array(payload); // la trame WS peut être réutilisée
-    this.playAt.push(at);
-    dec.decode(new EncodedAudioChunk({ type: 'key', timestamp: timestampUs, data: copy }));
+    dec.decode(new EncodedAudioChunk({ type: 'key', timestamp: Math.round((at / SAMPLE_RATE) * 1e6), data: copy }));
   }
 
   private onDecoded(data: AudioData): void {
-    const at = this.playAt.shift();
-    if (at === undefined) {
+    if (this.closed) {
       data.close();
       return;
     }
+    const at = Math.round((data.timestamp / 1e6) * SAMPLE_RATE);
     const frames = data.numberOfFrames;
     const ch = data.numberOfChannels;
     const channels: Float32Array[] = [];
@@ -147,15 +173,23 @@ class PeerPlayer {
 
   clear(): void {
     this.node.port.postMessage({ type: 'clear' });
-    this.playAt = [];
   }
 
   setGain(g: number): void {
     this.gain.gain.value = g;
   }
 
+  /** Arrêt définitif : le processeur rend false, le port est fermé, tout est libéré. */
   close(): void {
+    this.closed = true;
+    try {
+      this.node.port.postMessage({ type: 'close' });
+      this.node.port.close();
+    } catch {
+      // port déjà fermé
+    }
     this.decoder?.close();
+    this.decoder = null;
     this.node.disconnect();
     this.gain.disconnect();
   }
@@ -172,12 +206,20 @@ class AudioEngine {
   private monitorGain: GainNode | null = null;
   private encoder: AudioEncoder | null = null;
   private encoderChannels = 0;
+  private encoderFailed = false;
+  private inputLatencyMs = DEFAULT_INPUT_LATENCY_MS;
   private grid: AudioGrid | null = null;
   private players = new Map<string, PeerPlayer>();
   private resyncTimer: ReturnType<typeof setInterval> | null = null;
+  private statsTimer: ReturnType<typeof setInterval> | null = null;
   private seq = 0;
   private seqInterval = Number.NaN;
   private levelAt = 0;
+  /** Garde de génération : un start/stop pendant un await périme la suite. */
+  private gen = 0;
+  /** Stats par lot (250 ms) : le store ne churne pas à 50 Hz par pair. */
+  private sentPending = 0;
+  private chunkPending = new Map<string, { count: number; lastInterval: number }>();
 
   isSupported(): boolean {
     return (
@@ -210,20 +252,32 @@ class AudioEngine {
       store.setStatus('error', 'Ce navigateur ne sait pas faire : il faut Chrome ou Edge.');
       return;
     }
+    const myGen = ++this.gen;
     store.setStatus('starting');
     try {
       if (!this.ctx) {
-        const ctx = new AudioContext({ sampleRate: SAMPLE_RATE, latencyHint: 'playback' });
+        // 'interactive' = petits tampons : l'horodatage de capture reste précis.
+        const ctx = new AudioContext({ sampleRate: SAMPLE_RATE, latencyHint: 'interactive' });
         await ctx.audioWorklet.addModule('/worklets/capture.js');
         await ctx.audioWorklet.addModule('/worklets/player.js');
+        if (myGen !== this.gen) {
+          await ctx.close().catch(() => {});
+          return;
+        }
         this.master = ctx.createGain();
         this.analyser = ctx.createAnalyser();
         this.analyser.fftSize = 2048;
         this.master.connect(this.analyser).connect(ctx.destination);
         this.ctx = ctx;
+        ctx.onstatechange = () => {
+          // Retour d'une suspension (appel, onglet en arrière-plan) : realigner.
+          if (ctx.state === 'running') this.resync();
+        };
         this.resyncTimer = setInterval(() => this.resync(), RESYNC_MS);
+        this.statsTimer = setInterval(() => this.flushStats(), STATS_FLUSH_MS);
       }
       await this.ctx.resume();
+      if (myGen !== this.gen) return;
       this.resync();
       store.setWarning(null);
       if (!opts.capture) {
@@ -232,20 +286,23 @@ class AudioEngine {
         return;
       }
       try {
-        await this.startCapture(opts.deviceId ?? null);
+        await this.startCapture(opts.deviceId ?? null, myGen);
+        if (myGen !== this.gen) return;
         store.setStatus('live');
       } catch (e) {
+        if (myGen !== this.gen) return;
         // Pas d'entrée : on n'est pas « en erreur », on écoute seulement.
         this.stopCapture();
         store.setStatus('listening');
         store.setWarning(describeCaptureError(e));
       }
     } catch (e) {
+      if (myGen !== this.gen) return;
       store.setStatus('error', e instanceof Error ? e.message : String(e));
     }
   }
 
-  private async startCapture(deviceId: string | null): Promise<void> {
+  private async startCapture(deviceId: string | null, myGen: number): Promise<void> {
     const ctx = this.ctx!;
     this.stopCapture();
     const constraints = (id: string | null): MediaStreamConstraints => ({
@@ -271,7 +328,15 @@ class AudioEngine {
         throw e;
       }
     }
+    if (myGen !== this.gen || this.ctx !== ctx) {
+      stream.getTracks().forEach((t) => t.stop()); // périmé pendant la permission
+      return;
+    }
     this.stream = stream;
+    const track = stream.getAudioTracks()[0];
+    const settings = track?.getSettings() as (MediaTrackSettings & { latency?: number }) | undefined;
+    this.inputLatencyMs = settings?.latency ? settings.latency * 1000 : DEFAULT_INPUT_LATENCY_MS;
+    diag.inputLatencyMs = this.inputLatencyMs;
     const source = ctx.createMediaStreamSource(stream);
     // Une sortie (muette) reliée à la destination : sans ça, un nœud sans route
     // vers la sortie n'est pas rendu et le worklet ne tourne jamais.
@@ -283,23 +348,28 @@ class AudioEngine {
     const sink = ctx.createGain();
     sink.gain.value = 0;
     source.connect(node).connect(sink).connect(ctx.destination);
-    // Retour direct : la Korg dans le casque du PC sans attendre l'intervalle
-    // (~20-30 ms de latence, celle du navigateur).
+    // Retour direct : la Korg dans le casque du PC sans attendre l'intervalle.
     const monitor = ctx.createGain();
     monitor.gain.value = useAudioStore.getState().directMonitor ? 1 : 0;
     source.connect(monitor).connect(this.master!);
     this.monitorGain = monitor;
     this.source = source;
     this.captureNode = node;
+    this.encoderFailed = false;
     const store = useAudioStore.getState();
     store.setCapturing(true);
-    const used = stream.getAudioTracks()[0]?.getSettings().deviceId ?? deviceId;
+    const used = settings?.deviceId ?? deviceId;
     if (used) store.setInputId(used);
     void this.listInputs(); // libellés maintenant visibles
   }
 
   private stopCapture(): void {
-    this.captureNode?.port.close();
+    try {
+      this.captureNode?.port.postMessage({ type: 'close' });
+      this.captureNode?.port.close();
+    } catch {
+      // port déjà fermé
+    }
     this.captureNode?.disconnect();
     this.monitorGain?.disconnect();
     this.monitorGain = null;
@@ -314,7 +384,8 @@ class AudioEngine {
     useAudioStore.getState().setCapturing(false);
   }
 
-  private ensureEncoder(channels: number): AudioEncoder {
+  private ensureEncoder(channels: number): AudioEncoder | null {
+    if (this.encoderFailed) return null;
     if (this.encoder && this.encoderChannels === channels && this.encoder.state === 'configured') {
       return this.encoder;
     }
@@ -322,11 +393,7 @@ class AudioEngine {
     this.encoderChannels = channels;
     const enc = new AudioEncoder({
       output: (chunk) => this.onEncoded(chunk),
-      error: (e) => {
-        diag.encoderError = String(e);
-        useAudioStore.getState().setStatus('error', `Encodeur audio : ${String(e)}`);
-        this.encoder = null;
-      },
+      error: (e) => this.onEncoderError(e),
     });
     const config: AudioEncoderConfig = {
       codec: 'opus',
@@ -345,11 +412,19 @@ class AudioEngine {
     try {
       enc.configure(config);
     } catch (e) {
-      diag.encoderError = String(e);
-      useAudioStore.getState().setStatus('error', `Encodeur audio : ${String(e)}`);
+      this.onEncoderError(e);
+      return null;
     }
     this.encoder = enc;
     return enc;
+  }
+
+  /** Encodeur cassé : on arrête la capture (pas 50 encodeurs par seconde). */
+  private onEncoderError(e: unknown): void {
+    diag.encoderError = String(e);
+    this.encoderFailed = true;
+    this.stopCapture();
+    useAudioStore.getState().setStatus('error', `Encodeur audio : ${String(e)}`);
   }
 
   private onCaptured(m: CaptureMessage): void {
@@ -366,8 +441,10 @@ class AudioEngine {
       this.levelAt = now;
       useAudioStore.getState().setInputLevel(m.rms);
     }
-    if (useAudioStore.getState().muted || !this.grid) return;
-    const ch = m.channels.length;
+    if (!this.grid) return;
+    // Toujours encoder (mute compris) : l'encodeur date ses sorties en comptant
+    // les échantillons reçus, un trou d'entrée le décalerait pour de bon.
+    const ch = Math.min(2, m.channels.length);
     const frames = m.channels[0]!.length;
     const planar = new Float32Array(frames * ch);
     for (let c = 0; c < ch; c++) planar.set(m.channels[c]!, c * frames);
@@ -380,14 +457,14 @@ class AudioEngine {
       data: planar,
     });
     const enc = this.ensureEncoder(ch);
-    if (enc.state === 'configured') {
+    if (enc && enc.state === 'configured') {
       diag.encodeCalls++;
       enc.encode(data);
     }
     data.close();
   }
 
-  /** Instant performance.now() correspondant à un échantillon de contexte. */
+  /** Instant performance.now() où un échantillon de contexte SORT des enceintes. */
   private perfOfFrame(frame: number): number {
     const ctx = this.ctx!;
     const ts = ctx.getOutputTimestamp?.();
@@ -396,29 +473,31 @@ class AudioEngine {
     return perfTime + (frame / SAMPLE_RATE - contextTime) * 1000;
   }
 
+  /** Instant de CAPTURE réel d'un échantillon : sortie − latences de sortie − latence d'entrée. */
+  private captureInstant(frame: number): number {
+    const ctx = this.ctx!;
+    const outLatencyMs = (ctx.baseLatency + (ctx.outputLatency ?? 0)) * 1000;
+    return this.perfOfFrame(frame) - outLatencyMs - this.inputLatencyMs;
+  }
+
   private onEncoded(chunk: EncodedAudioChunk): void {
     const grid = this.grid;
-    if (!grid) return;
+    if (!grid || !clockSync.ready) return; // sans horloge serveur, une date serait fausse
     const frame = Math.round((chunk.timestamp / 1e6) * SAMPLE_RATE);
-    const perf = this.perfOfFrame(frame) - CAPTURE_LATENCY_MS;
-    const pos = positionAt(grid, clockSync.serverNow(perf));
+    const pos = positionAt(grid, clockSync.serverNow(this.captureInstant(frame)));
     if (pos.interval !== this.seqInterval) {
       this.seqInterval = pos.interval;
       this.seq = 0;
     }
+    const seq = this.seq++;
+    const store = useAudioStore.getState();
+    if (store.muted) return; // couper = ne pas envoyer ; l'encodeur, lui, continue
     const payload = new Uint8Array(chunk.byteLength);
     chunk.copyTo(payload);
     sendAudioFrame(
-      encodeUpFrame({
-        gridId: grid.id,
-        interval: pos.interval,
-        seq: this.seq++,
-        offsetSamples: pos.offsetSamples,
-        payload,
-      }),
+      encodeUpFrame({ gridId: grid.id, interval: pos.interval, seq, offsetSamples: pos.offsetSamples, payload }),
     );
-    const store = useAudioStore.getState();
-    store.sent();
+    this.sentPending++;
     // Test solo : je m'entends un intervalle plus tard, comme mes potes m'entendent.
     if (store.selfMonitor) this.play(SELF_ID, payload, pos.interval, pos.offsetSamples);
   }
@@ -426,9 +505,7 @@ class AudioEngine {
   /** Trame binaire reçue du relais (un pair a joué). */
   onFrame(bytes: Uint8Array): void {
     const grid = this.grid;
-    const ctx = this.ctx;
-    const master = this.master;
-    if (!grid || !ctx || !master) return;
+    if (!grid || !this.ctx) return;
     const f = decodeDownFrame(bytes);
     if (!f || f.gridId !== grid.id) return;
     this.play(f.peerId, f.payload, f.interval, f.offsetSamples);
@@ -440,25 +517,44 @@ class AudioEngine {
     const ctx = this.ctx;
     const master = this.master;
     if (!grid || !ctx || !master) return;
+    const at = playbackSample(grid, { interval, offsetSamples });
+    if (clockSync.ready) {
+      // Fenêtre de validité : le passé est perdu, un futur lointain est une horloge fausse.
+      const nowSample = sampleAt(grid, clockSync.serverNow(performance.now()));
+      if (at + 960 < nowSample - LATE_WINDOW_SAMPLES) {
+        diag.droppedLate++;
+        return;
+      }
+      if (at > nowSample + EARLY_WINDOW_SAMPLES) {
+        diag.droppedEarly++;
+        return;
+      }
+    }
     let player = this.players.get(peerId);
     if (!player) {
+      if (this.players.size >= MAX_PLAYERS) return;
       player = new PeerPlayer(ctx, master, peerId);
       this.players.set(peerId, player);
       this.syncPlayer(player);
     }
-    const at = playbackSample(grid, { interval, offsetSamples });
-    player.push(payload, at, Math.round((at / SAMPLE_RATE) * 1e6));
-    useAudioStore.getState().peerChunk(peerId, interval);
+    player.push(payload, at);
+    const pending = this.chunkPending.get(peerId);
+    if (pending) {
+      pending.count++;
+      pending.lastInterval = interval;
+    } else {
+      this.chunkPending.set(peerId, { count: 1, lastInterval: interval });
+    }
   }
 
-  setDirectMonitor(on: boolean): void {
-    useAudioStore.getState().setDirectMonitor(on);
-    if (this.monitorGain) this.monitorGain.gain.value = on ? 1 : 0;
-  }
-
-  setSelfMonitor(on: boolean): void {
-    useAudioStore.getState().setSelfMonitor(on);
-    if (!on) this.dropPeer(SELF_ID);
+  private flushStats(): void {
+    const store = useAudioStore.getState();
+    if (this.sentPending) {
+      store.sent(this.sentPending);
+      this.sentPending = 0;
+    }
+    for (const [id, p] of this.chunkPending) store.peerChunk(id, p.lastInterval, p.count);
+    this.chunkPending.clear();
   }
 
   setGrid(grid: AudioGrid): void {
@@ -484,13 +580,23 @@ class AudioEngine {
     p.sync(ctxFrame, gridSample);
   }
 
-  private resync(): void {
+  /** Réaligne tous les lecteurs sur l'horloge serveur (timer, 1er pong, reprise). */
+  resync(): void {
     for (const p of this.players.values()) this.syncPlayer(p);
+  }
+
+  /** La liste réelle des pairs de la room (welcome) : les autres lecteurs meurent. */
+  reconcile(peerIds: string[]): void {
+    const keep = new Set(peerIds);
+    for (const id of [...this.players.keys()]) {
+      if (id !== SELF_ID && !keep.has(id)) this.dropPeer(id);
+    }
   }
 
   dropPeer(id: string): void {
     this.players.get(id)?.close();
     this.players.delete(id);
+    this.chunkPending.delete(id);
     useAudioStore.getState().dropPeer(id);
   }
 
@@ -509,6 +615,16 @@ class AudioEngine {
     useAudioStore.getState().peerMuted(id, muted);
   }
 
+  setDirectMonitor(on: boolean): void {
+    useAudioStore.getState().setDirectMonitor(on);
+    if (this.monitorGain) this.monitorGain.gain.value = on ? 1 : 0;
+  }
+
+  setSelfMonitor(on: boolean): void {
+    useAudioStore.getState().setSelfMonitor(on);
+    if (!on) this.dropPeer(SELF_ID);
+  }
+
   /** Niveau RMS de la sortie (ce qu'on entend), 0..1. */
   outputLevel(): number {
     if (!this.analyser) return 0;
@@ -520,16 +636,23 @@ class AudioEngine {
   }
 
   async stop(): Promise<void> {
+    this.gen++;
     this.stopCapture();
     for (const p of this.players.values()) p.close();
     this.players.clear();
+    this.chunkPending.clear();
     if (this.resyncTimer) clearInterval(this.resyncTimer);
+    if (this.statsTimer) clearInterval(this.statsTimer);
     this.resyncTimer = null;
+    this.statsTimer = null;
     const ctx = this.ctx;
     this.ctx = null;
     this.master = null;
     this.analyser = null;
-    if (ctx) await ctx.close().catch(() => {});
+    if (ctx) {
+      ctx.onstatechange = null;
+      await ctx.close().catch(() => {});
+    }
     useAudioStore.getState().setStatus('off');
   }
 
@@ -542,11 +665,14 @@ class AudioEngine {
 
   /** Compteurs pour les tests de bout en bout. */
   stats(): Record<string, unknown> {
+    this.flushStats();
     const s = useAudioStore.getState();
     diag.ctxState = this.ctx?.state ?? 'none';
     diag.ctxTime = this.ctx?.currentTime ?? 0;
     const t = this.stream?.getAudioTracks()[0];
-    diag.track = t ? `${t.label}|${t.readyState}|muted=${t.muted}|enabled=${t.enabled}|ch=${t.getSettings().channelCount ?? '?'}|sr=${t.getSettings().sampleRate ?? '?'}` : 'none';
+    diag.track = t
+      ? `${t.label}|${t.readyState}|muted=${t.muted}|enabled=${t.enabled}|ch=${t.getSettings().channelCount ?? '?'}|sr=${t.getSettings().sampleRate ?? '?'}`
+      : 'none';
     return {
       status: s.status,
       error: s.error,
@@ -555,6 +681,7 @@ class AudioEngine {
       capturing: s.capturing,
       framesSent: s.framesSent,
       framesReceived: s.framesReceived,
+      players: this.players.size,
       peers: Object.fromEntries(
         Object.entries(s.peers).map(([id, p]) => [id, { chunks: p.chunks, level: p.level, lastInterval: p.lastInterval }]),
       ),

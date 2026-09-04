@@ -120,6 +120,16 @@ export class SessionClient {
         return; // ignore malformed frames
       }
       if (msg.t === 'pong') this.lastPongAt = Date.now();
+      if (msg.t === 'evicted') {
+        // Un socket plus récent de notre client nous a remplacés (ou un usurpateur
+        // a tenté) : on ferme, la reconnexion automatique rejoint aussitôt.
+        try {
+          socket.close();
+        } catch {
+          // déjà fermé
+        }
+        return;
+      }
       this.opts.onMessage(msg);
     };
     socket.onclose = () => {

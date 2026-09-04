@@ -76,6 +76,18 @@ faux micro Chrome) — vérifié le 04/09/2026 : 581 tranches envoyées, 527 re�
 et jouées, signal en sortie. Aussi `scripts/e2e-son-solo.mjs` (auto-écoute décalée)
 et `scripts/e2e-son-nodevice.mjs` (aucune entrée → écoute + avertissement).
 
+## Relais durci (audit 2026-09-04)
+
+Le relais est public et sans authentification. Depuis l'audit : messages JSON
+validés champ par champ (`src/core/session/validate.ts`, tout le reste est
+ignoré, jamais de plantage), `maxPayload` 64 Kio, trames audio ≤ 4 Kio et ≤ 80/s
+par membre, JSON ≤ 40/s, 16 membres par room, 64 rooms, 6 connexions par IP,
+auditeurs sans audio, jeton `clientId` jamais rediffusé (éviction notifiée par
+`{t:'evicted'}` → le client rejoint), contre-pression (audio sauté au-dessus de
+256 Kio en attente, socket coupé au-dessus de 2 Mio), fantômes balayés après
+30 s sans message, conteneur `USER node`, `cpus: "1"`, `pids_limit`, tas Node
+192 Mo. Refus = `{t:'error', code}` affiché dans la barre de session.
+
 ## Cache navigateur (2026-09-04)
 
 Sans en-tête `Cache-Control`, un téléphone gardait l'ancienne app des heures

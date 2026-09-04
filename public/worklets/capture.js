@@ -14,6 +14,10 @@ class JamCapture extends AudioWorkletProcessor {
     this.frames = 0;
     this.idle = 0;
     this.ticks = 0;
+    this.closed = false;
+    this.port.onmessage = (e) => {
+      if (e.data && e.data.type === 'close') this.closed = true;
+    };
   }
 
   process(inputs, outputs) {
@@ -24,12 +28,14 @@ class JamCapture extends AudioWorkletProcessor {
     if (++this.ticks % 375 === 0) {
       this.port.postMessage({ heartbeat: true, frames: this.frames, idle: this.idle, inputs: input ? input.length : -1 });
     }
+    if (this.closed) return false;
     if (!input || input.length === 0) {
       this.idle++;
       return true;
     }
     this.frames++;
-    const ch = input.length;
+    // Au plus 2 canaux : une interface 6 entrées ne doit pas casser l'encodeur Opus.
+    const ch = Math.min(2, input.length);
     const n = input[0].length; // 128
     if (!this.buffers || this.buffers.length !== ch) {
       this.buffers = Array.from({ length: ch }, () => new Float32Array(FRAME * 2));

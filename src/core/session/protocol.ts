@@ -102,4 +102,8 @@ export type ServerMessage =
   | { t: 'pong'; ts: number; serverTs: number }
   | { t: 'lobbies'; rooms: LobbyInfo[] }
   // The room's audio grid (on join, and whenever the host changes it).
-  | { t: 'grid'; grid: AudioGrid };
+  | { t: 'grid'; grid: AudioGrid }
+  // This socket was replaced by a newer connection of the same client: rejoin.
+  | { t: 'evicted' }
+  // The join was refused (room full, too many rooms) or the peer was cut off.
+  | { t: 'error'; code: 'room-full' | 'too-many-rooms' | 'rate-limited' };

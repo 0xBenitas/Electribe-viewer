@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { audioEngine, SELF_ID } from '../audio/engine.ts';
 import { useAudioStore } from '../store/audio.ts';
 import { useSessionStore } from '../store/session.ts';
@@ -75,8 +75,10 @@ export function JamAudio() {
     if (audioEngine.isSupported()) void audioEngine.listInputs().catch(() => {});
   }, []);
 
+  const lastGridId = useRef<number | null>(null);
   useEffect(() => {
-    if (grid) {
+    if (grid && grid.id !== lastGridId.current) {
+      lastGridId.current = grid.id;
       setBpm(String(grid.bpm));
       setBpi(grid.bpi);
     }

@@ -10,4 +10,6 @@ COPY server ./server
 COPY src/core ./src/core
 EXPOSE 8787
 ENV PORT=8787
+ENV NODE_OPTIONS=--max-old-space-size=192
+USER node
 CMD ["npx", "tsx", "server/index.ts"]

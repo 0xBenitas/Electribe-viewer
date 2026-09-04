@@ -52,11 +52,11 @@ interface AudioStore {
   setMuted: (v: boolean) => void;
   setInputLevel: (v: number) => void;
   peerLevel: (id: string, level: number) => void;
-  peerChunk: (id: string, interval: number) => void;
+  peerChunk: (id: string, interval: number, count: number) => void;
   peerGain: (id: string, gain: number) => void;
   peerMuted: (id: string, muted: boolean) => void;
   dropPeer: (id: string) => void;
-  sent: () => void;
+  sent: (count: number) => void;
   reset: () => void;
 }
 
@@ -93,12 +93,12 @@ export const useAudioStore = create<AudioStore>((set) => ({
   setInputLevel: (inputLevel) => set({ inputLevel }),
   peerLevel: (id, level) =>
     set((s) => ({ peers: { ...s.peers, [id]: { ...peerDefaults, ...s.peers[id], level } } })),
-  peerChunk: (id, interval) =>
+  peerChunk: (id, interval, count) =>
     set((s) => {
       const p = { ...peerDefaults, ...s.peers[id] };
       return {
-        framesReceived: s.framesReceived + 1,
-        peers: { ...s.peers, [id]: { ...p, chunks: p.chunks + 1, lastInterval: interval } },
+        framesReceived: s.framesReceived + count,
+        peers: { ...s.peers, [id]: { ...p, chunks: p.chunks + count, lastInterval: interval } },
       };
     }),
   peerGain: (id, gain) =>
@@ -112,7 +112,7 @@ export const useAudioStore = create<AudioStore>((set) => ({
       delete peers[id];
       return { peers };
     }),
-  sent: () => set((s) => ({ framesSent: s.framesSent + 1 })),
+  sent: (count) => set((s) => ({ framesSent: s.framesSent + count })),
   reset: () =>
     set({ status: 'off', error: null, warning: null, grid: null, capturing: false, inputLevel: 0, peers: {}, framesSent: 0, framesReceived: 0 }),
 }));

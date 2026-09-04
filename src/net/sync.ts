@@ -23,11 +23,26 @@ export function dispatchServerMessage(msg: ServerMessage): void {
       // No existing host among the others → we're the first joiner, i.e. host.
       const existingHost = msg.peers.find((p) => p.isHost);
       store.setHostId(existingHost ? existingHost.id : msg.self);
+      store.setLastError(null);
       audioEngine.setGrid(msg.grid);
+      // Les lecteurs audio suivent la liste réelle (un pair parti pendant notre
+      // coupure, ou un id réattribué après redémarrage du relais).
+      audioEngine.reconcile(msg.peers.map((p) => p.id));
       break;
     }
     case 'grid':
       audioEngine.setGrid(msg.grid);
+      break;
+    case 'evicted':
+      break; // géré dans SessionClient (reconnexion)
+    case 'error':
+      store.setLastError(
+        msg.code === 'room-full'
+          ? 'Session pleine (16 personnes max).'
+          : msg.code === 'too-many-rooms'
+            ? 'Trop de sessions ouvertes sur le serveur, réessaie plus tard.'
+            : 'Le serveur a coupé : trop de messages.',
+      );
       break;
     case 'peer-join':
       // A host-promotion peer-join is echoed to the promoted peer too: adopt the
@@ -62,7 +77,9 @@ export function dispatchServerMessage(msg: ServerMessage): void {
       const now = performance.now();
       store.setLatency(Math.round(now - msg.ts));
       // Horloge serveur estimée : c'est elle qui date les tranches audio (ADR-007).
+      const wasReady = clockSync.ready;
       clockSync.addSample({ sentPerf: msg.ts, recvPerf: now, serverTs: msg.serverTs });
+      if (!wasReady) audioEngine.resync(); // premier pong : les lecteurs s'alignent
       break;
     }
   }

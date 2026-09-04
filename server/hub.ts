@@ -17,6 +17,18 @@ import type {
 } from '../src/core/session/protocol.ts';
 import type { DeviceSnapshot } from '../src/core/session/snapshot.ts';
 import { clampGrid, type AudioGrid } from '../src/core/audio/grid.ts';
+import { parseClientMessage } from '../src/core/session/validate.ts';
+
+/** Plafonds (audit sécurité 2026-09-04) : le relais est public et sans auth. */
+export const MAX_MEMBERS_PER_ROOM = 16;
+export const MAX_ROOMS = 64;
+/** Une trame Opus de 20 ms à 96 kb/s ≈ 240 o ; au-delà de 4 Kio ce n'est pas de l'audio. */
+export const MAX_AUDIO_FRAME_BYTES = 4096;
+/** Débits par membre et par seconde : ~50 trames/s légitimes, ~10 JSON/s. */
+export const MAX_AUDIO_FRAMES_PER_S = 80;
+export const MAX_JSON_PER_S = 40;
+/** Membre muet (aucun message, même pas de ping) plus longtemps = fantôme, exclu. */
+export const IDLE_TIMEOUT_MS = 30000;
 
 export interface Outbound {
   /** Peer ids that should receive `msg`. */
@@ -30,6 +42,14 @@ interface Member {
   joinedAt: number;
   /** Last time this member sent a binary audio frame (ADR-007), 0 = never. */
   audioAt: number;
+  /** Last message of any kind (ping included): silence too long = ghost. */
+  seenAt: number;
+  /** Client token for ghost eviction on fast reconnect — NEVER broadcast. */
+  clientId: string | null;
+  /** Rate limiting: current one-second window and counters. */
+  windowAt: number;
+  audioCount: number;
+  jsonCount: number;
 }
 
 /** A member counts as "sending audio" this long after its last frame. */
@@ -42,7 +62,22 @@ export class SessionHub {
 
   constructor(private readonly now: () => number = Date.now) {}
 
-  handle(peerId: string, msg: ClientMessage): Outbound[] {
+  /**
+   * Entry point for anything a socket sends: validated first (unknown or
+   * malformed = ignored, never a crash), rate-limited, then dispatched.
+   */
+  handle(peerId: string, raw: unknown): Outbound[] {
+    const msg = parseClientMessage(raw);
+    if (!msg) return [];
+    const member = this.members.get(peerId);
+    if (member) {
+      member.seenAt = this.now();
+      if (!this.allow(member, 'json')) return [];
+    }
+    return this.dispatch(peerId, msg);
+  }
+
+  private dispatch(peerId: string, msg: ClientMessage): Outbound[] {
     switch (msg.t) {
       case 'join':
         return this.join(peerId, msg.room, msg.info);
@@ -69,16 +104,52 @@ export class SessionHub {
         ];
       case 'grid':
         return this.setGrid(peerId, msg.bpm, msg.bpi);
+      default:
+        return [];
     }
+  }
+
+  /** One-second window counters per member; over the cap = dropped. */
+  private allow(member: Member, kind: 'json' | 'audio'): boolean {
+    const now = this.now();
+    if (now - member.windowAt >= 1000) {
+      member.windowAt = now;
+      member.audioCount = 0;
+      member.jsonCount = 0;
+    }
+    if (kind === 'audio') return ++member.audioCount <= MAX_AUDIO_FRAMES_PER_S;
+    return ++member.jsonCount <= MAX_JSON_PER_S;
+  }
+
+  /**
+   * Members silent for IDLE_TIMEOUT_MS (no ping either) are ghosts: dropped with
+   * the same notifications as a disconnect. Returns the ids to terminate too.
+   */
+  sweep(): { removed: string[]; out: Outbound[] } {
+    const now = this.now();
+    const removed: string[] = [];
+    const out: Outbound[] = [];
+    for (const [id, m] of [...this.members]) {
+      if (now - m.seenAt > IDLE_TIMEOUT_MS) {
+        removed.push(id);
+        out.push(...this.disconnect(id));
+      }
+    }
+    return { removed, out };
   }
 
   /**
    * Binary audio frame from `peerId` (ADR-007): everyone else in its room gets
    * it — players AND listeners. Empty if the sender is in no room.
    */
-  audioRecipients(peerId: string): string[] {
+  audioRecipients(peerId: string, byteLength: number): string[] {
     const member = this.members.get(peerId);
     if (!member) return [];
+    member.seenAt = this.now();
+    // Listeners have no instrument: a listening page must never inject audio.
+    if (member.state.info.listener) return [];
+    if (byteLength > MAX_AUDIO_FRAME_BYTES) return [];
+    if (!this.allow(member, 'audio')) return [];
     member.audioAt = this.now();
     return this.others(peerId, member.room);
   }
@@ -116,26 +187,44 @@ export class SessionHub {
     return out;
   }
 
-  private join(peerId: string, room: string, info: PeerInfo): Outbound[] {
-    this.members.delete(peerId); // tolerate a same-id re-join
-    const out: Outbound[] = [];
+  private join(peerId: string, room: string, rawInfo: PeerInfo): Outbound[] {
+    // Re-join (same socket changing room): leave the old room properly first,
+    // so the others get their peer-leave and the old grid can die.
+    const out: Outbound[] = this.members.has(peerId) ? this.disconnect(peerId) : [];
+    // The client token stays server-side; the broadcast info never carries it.
+    const { clientId = null, ...info } = rawInfo;
     // Fast reconnect: a stale ghost of the SAME client may still sit in the room
     // (its socket's close not yet noticed). Evict it so we don't duplicate
-    // ourselves, nor strand the host role on a dead peer. Tell the others to drop
-    // it; the rejoining peer learns the clean set from its own `welcome` below.
-    if (info.clientId) {
+    // ourselves, nor strand the host role on a dead peer. The evicted socket is
+    // told (a hijacked victim rejoins at once); the others get a peer-leave.
+    if (clientId) {
       for (const [id, m] of [...this.members]) {
-        if (m.room === room && m.state.info.clientId === info.clientId) {
+        if (m.room === room && m.clientId === clientId) {
+          // No host promotion here: if the ghost was host, the rejoining client
+          // reclaims the role below (nobody else holds it).
           this.members.delete(id);
           out.push({ recipients: this.roomPeerIds(room), msg: { t: 'peer-leave', peer: id } });
+          out.push({ recipients: [id], msg: { t: 'evicted' } });
         }
       }
     }
     const existing = this.roomPeerStates(room);
+    if (existing.length >= MAX_MEMBERS_PER_ROOM) {
+      out.push({ recipients: [peerId], msg: { t: 'error', code: 'room-full' } });
+      return out;
+    }
+    if (existing.length === 0 && this.grids.size >= MAX_ROOMS) {
+      out.push({ recipients: [peerId], msg: { t: 'error', code: 'too-many-rooms' } });
+      return out;
+    }
     // A listener (no machine) is never host; the first real player is.
     const isHost = !info.listener && !existing.some((p) => p.isHost);
     const state: PeerState = { id: peerId, info, isHost };
-    this.members.set(peerId, { room, state, joinedAt: this.now(), audioAt: 0 });
+    const now = this.now();
+    this.members.set(peerId, {
+      room, state, joinedAt: now, audioAt: 0, seenAt: now, clientId,
+      windowAt: now, audioCount: 0, jsonCount: 0,
+    });
     let grid = this.grids.get(room);
     if (!grid) {
       grid = { id: 1, bpm: 120, bpi: 16, anchor: this.now() };
@@ -180,6 +269,8 @@ export class SessionHub {
     if (!member || !member.state.isHost) return [];
     const prev = this.grids.get(member.room);
     const c = clampGrid(bpm, bpi);
+    // Same values = nothing to do: re-anchoring would cost everyone an interval.
+    if (prev && prev.bpm === c.bpm && prev.bpi === c.bpi) return [];
     const grid: AudioGrid = { id: ((prev?.id ?? 0) % 255) + 1, ...c, anchor: this.now() };
     this.grids.set(member.room, grid);
     return [{ recipients: this.roomPeerIds(member.room), msg: { t: 'grid', grid } }];

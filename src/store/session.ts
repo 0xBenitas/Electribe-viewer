@@ -30,11 +30,14 @@ interface SessionStore {
   linkStatus: LinkStatus;
   /** Round-trip latency to the session server (ms), or null until measured. */
   latencyMs: number | null;
+  /** Refus du relais (room pleine…), affiché dans la barre de session. */
+  lastError: string | null;
 
   setSelf: (id: string, info: PeerInfo) => void;
   setHostId: (id: PeerId | null) => void;
   setLinkStatus: (status: LinkStatus) => void;
   setLatency: (ms: number) => void;
+  setLastError: (msg: string | null) => void;
   addPeer: (peer: PeerState) => void;
   /** Replace the whole peer set — used to reconcile on a (re)connect `welcome`,
    *  dropping any peer that left while we were briefly disconnected. */
@@ -58,8 +61,10 @@ export const useSessionStore = create<SessionStore>((set) => ({
   transportAt: null,
   linkStatus: 'idle',
   latencyMs: null,
+  lastError: null,
 
   setSelf: (id, info) => set({ self: { id, info } }),
+  setLastError: (lastError) => set({ lastError }),
 
   setHostId: (hostId) => set({ hostId }),
 
@@ -112,5 +117,6 @@ export const useSessionStore = create<SessionStore>((set) => ({
       transportAt: null,
       linkStatus: 'idle',
       latencyMs: null,
+      lastError: null,
     }),
 }));

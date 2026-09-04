@@ -29,6 +29,14 @@ services:
     restart: unless-stopped
 
   ws:
+
+    # Un relais saturé ne doit pas emporter la machine (audit 2026-09-04).
+
+    cpus: "1"
+
+    pids_limit: 128
+
+    mem_limit: 256m
     build:
       context: ..
       dockerfile: server/Dockerfile
