@@ -33,11 +33,14 @@ interface AudioStore {
   framesReceived: number;
   /** Test solo : se réentendre un intervalle plus tard. */
   selfMonitor: boolean;
+  /** Retour direct : mon entrée renvoyée tout de suite dans la sortie (casque sur le PC). */
+  directMonitor: boolean;
   /** Avertissement non bloquant (ex. pas d'entrée : on écoute seulement). */
   warning: string | null;
 
   setSupported: (v: boolean) => void;
   setSelfMonitor: (v: boolean) => void;
+  setDirectMonitor: (v: boolean) => void;
   setWarning: (w: string | null) => void;
   setStatus: (status: AudioStatus, error?: string | null) => void;
   setGrid: (grid: AudioGrid | null) => void;
@@ -71,10 +74,12 @@ export const useAudioStore = create<AudioStore>((set) => ({
   framesSent: 0,
   framesReceived: 0,
   selfMonitor: false,
+  directMonitor: true,
   warning: null,
 
   setSupported: (supported) => set({ supported }),
   setSelfMonitor: (selfMonitor) => set({ selfMonitor }),
+  setDirectMonitor: (directMonitor) => set({ directMonitor }),
   setWarning: (warning) => set({ warning }),
   setStatus: (status, error = null) => set({ status, error }),
   setGrid: (grid) => set({ grid }),

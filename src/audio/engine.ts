@@ -168,6 +168,8 @@ class AudioEngine {
   private stream: MediaStream | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private captureNode: AudioWorkletNode | null = null;
+  /** Retour direct entrée → sortie (gain 0 ou 1), pour s'entendre via le PC. */
+  private monitorGain: GainNode | null = null;
   private encoder: AudioEncoder | null = null;
   private encoderChannels = 0;
   private grid: AudioGrid | null = null;
@@ -281,6 +283,12 @@ class AudioEngine {
     const sink = ctx.createGain();
     sink.gain.value = 0;
     source.connect(node).connect(sink).connect(ctx.destination);
+    // Retour direct : la Korg dans le casque du PC sans attendre l'intervalle
+    // (~20-30 ms de latence, celle du navigateur).
+    const monitor = ctx.createGain();
+    monitor.gain.value = useAudioStore.getState().directMonitor ? 1 : 0;
+    source.connect(monitor).connect(this.master!);
+    this.monitorGain = monitor;
     this.source = source;
     this.captureNode = node;
     const store = useAudioStore.getState();
@@ -293,6 +301,8 @@ class AudioEngine {
   private stopCapture(): void {
     this.captureNode?.port.close();
     this.captureNode?.disconnect();
+    this.monitorGain?.disconnect();
+    this.monitorGain = null;
     this.source?.disconnect();
     this.stream?.getTracks().forEach((t) => t.stop());
     this.encoder?.close();
@@ -439,6 +449,11 @@ class AudioEngine {
     const at = playbackSample(grid, { interval, offsetSamples });
     player.push(payload, at, Math.round((at / SAMPLE_RATE) * 1e6));
     useAudioStore.getState().peerChunk(peerId, interval);
+  }
+
+  setDirectMonitor(on: boolean): void {
+    useAudioStore.getState().setDirectMonitor(on);
+    if (this.monitorGain) this.monitorGain.gain.value = on ? 1 : 0;
   }
 
   setSelfMonitor(on: boolean): void {

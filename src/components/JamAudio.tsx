@@ -49,6 +49,7 @@ export function JamAudio() {
   const framesSent = useAudioStore((s) => s.framesSent);
   const warning = useAudioStore((s) => s.warning);
   const selfMonitor = useAudioStore((s) => s.selfMonitor);
+  const directMonitor = useAudioStore((s) => s.directMonitor);
 
   const machineBpm = useClockStore((s) => s.bpm);
 
@@ -223,6 +224,14 @@ export function JamAudio() {
                   </select>
                   <span>{framesSent > 0 ? `${framesSent} tranches envoyées` : 'rien envoyé encore'}</span>
                 </div>
+                <label className="flex items-center gap-2 text-[11px] text-text-dim">
+                  <input
+                    type="checkbox"
+                    checked={directMonitor}
+                    onChange={(e) => audioEngine.setDirectMonitor(e.target.checked)}
+                  />
+                  M’entendre en direct (ma machine tout de suite dans le casque du PC, avec les autres)
+                </label>
                 <label className="flex items-center gap-2 text-[11px] text-text-dim">
                   <input
                     type="checkbox"
