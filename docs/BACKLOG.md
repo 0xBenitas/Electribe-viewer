@@ -11,6 +11,10 @@
 - [ ] **Validation hardware** : émission clock Electribe (`0xF8`/transport) +
       recette audio Phase 0 sur le VPS (jam à deux via Jamtaba, cf. `docs/DEPLOY.md`).
 - [x] **Build `ninjamsrv`** validé : compilé et en service sur le VPS depuis juin 2026.
+- [ ] **Après l'audit du 04/09** (`docs/AUDIT-2026-09-04.md`) : mesurer le calage
+      réel à deux machines ; mix côté relais → flux MP3 (iPhone, `/live`) ;
+      mot de passe / lien non listé pour les rooms ; anneau lecteur dimensionné
+      à 2 intervalles.
 - [ ] **Première jam à deux** : audit de préparation + déroulé dans
       `docs/PREMIERE-JAM.md` (04/09/2026). Serveur prêt ; il manque Jamtaba sur le
       PC de l'hôte et un pote. Compte rendu à remplir dans le même fichier.
