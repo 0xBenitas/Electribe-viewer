@@ -28,7 +28,7 @@ interface GuideCopy {
 }
 const copy = guideJson as GuideCopy;
 import { NINJAM_TARGET } from '../lib/ninjamHost.ts';
-import { buildShareLink } from '../lib/sessionPrefs.ts';
+import { buildShareLink, buildListenLink } from '../lib/sessionPrefs.ts';
 import { JamtabaFigure } from './JamtabaFigure.tsx';
 
 // Le mode d'emploi : rôles, étapes, pièges, liens. Même contenu sur l'accueil
@@ -85,7 +85,9 @@ function ExtLink({ href, label }: { href: string; label: string }) {
 }
 
 export function GuideContent({ room, server }: Ctx) {
-  const listen = `${origin()}/ecouter.html${room ? `?room=${encodeURIComponent(room)}` : ''}`;
+  const listen = room
+    ? buildListenLink(room, server ?? '', `${origin()}/`)
+    : `${origin()}/?room=NOM-DE-LA-SESSION&listen=1`;
   const share = room ? buildShareLink(room, server ?? '') : null;
   const chip = (code: string) => (code === 'ninjam' ? NINJAM_TARGET : listen);
 

@@ -47,6 +47,12 @@ export function savePrefs(prefs: SessionPrefs): void {
 }
 
 /** Shareable link to a room; the server is included only when non-default. */
+/** Lien d'écoute : la session en mode écoute (son du navigateur), un bouton à toucher. */
+export function buildListenLink(room: string, server: string, origin?: string): string {
+  const base = buildShareLink(room, server, origin);
+  return `${base}${base.includes('?') ? '&' : '?'}listen=1`;
+}
+
 export function buildShareLink(
   room: string,
   server: string,

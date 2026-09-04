@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSessionStore } from '../store/session.ts';
 import { useSharedTransport } from '../model/useClock.ts';
-import { buildShareLink } from '../lib/sessionPrefs.ts';
+import { buildShareLink, buildListenLink } from '../lib/sessionPrefs.ts';
 import { GuideOverlay } from './Guide.tsx';
 import guideCopy from '../copy/guide.json';
 
@@ -35,8 +35,9 @@ export function SessionBar({ room, server, onDisconnect }: Props) {
     });
   };
 
-  // Listen link → the standalone audio page (works on any phone, iPhone too).
-  const listenLink = `${location.origin}/ecouter.html?room=${encodeURIComponent(room)}`;
+  // Listen link → this session in listen mode: the browser audio (ADR-007), one
+  // tap to hear. Chrome/Edge (Android OK; iPhone: pas encore, pas de WebCodecs).
+  const listenLink = buildListenLink(room, server);
   const copyListen = () => {
     void navigator.clipboard?.writeText(listenLink).then(() => {
       setCopiedListen(true);
@@ -82,7 +83,7 @@ export function SessionBar({ room, server, onDisconnect }: Props) {
         target="_blank"
         rel="noreferrer"
         onClick={copyListen}
-        title="Lien d'écoute audio (mobile/iPhone OK) — copié dans le presse-papier"
+        title="Lien d'écoute : la session en mode écoute, un tap pour entendre (Chrome/Edge, Android OK) — copié dans le presse-papier"
         className="btn-acid bg-bg-3 px-3 py-1.5 text-xs text-text-dim no-underline"
         style={{ borderWidth: '2px', boxShadow: '2px 2px 0 #000' }}
       >

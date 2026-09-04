@@ -37,6 +37,21 @@ export function LobbyBrowser({ onConnect }: Props) {
   const { lobbies, status } = useLobbies(appliedServer, true);
   const loading = status !== 'open' && status !== 'closed';
 
+  // Lien d'écoute (`?room=…&listen=1`) : on entre tout de suite en mode écoute,
+  // sans machine ni formulaire. Le son demande ensuite UN tap (politique autoplay).
+  const onConnectRef = useRef(onConnect);
+  onConnectRef.current = onConnect;
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('listen') !== '1') return;
+    const r = (params.get('room') ?? initial.room).trim() || 'jam';
+    const n = initial.name.trim() || 'Auditeur';
+    const s = initial.server.trim();
+    savePrefs({ name: n, room: r, server: s });
+    onConnectRef.current({ url: s, room: r, name: n, listenOnly: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const go = (targetRoom: string, listenOnly: boolean) => {
     const n = name.trim();
     if (!n) {

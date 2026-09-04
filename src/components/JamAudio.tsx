@@ -178,13 +178,15 @@ export function JamAudio() {
           )}
           <button
             onClick={() => start(false)}
-            className="btn-acid bg-bg-3 px-4 py-2 text-sm text-text-dim"
-            style={{ borderWidth: '2px', boxShadow: '3px 3px 0 #000' }}
+            className={listener ? 'btn-acid bg-green px-5 py-2.5 text-base font-bold text-[#0a1404]' : 'btn-acid bg-bg-3 px-4 py-2 text-sm text-text-dim'}
+            style={listener ? undefined : { borderWidth: '2px', boxShadow: '3px 3px 0 #000' }}
           >
             {listener ? '🔊 Écouter la jam' : 'Seulement écouter'}
           </button>
           <span className="text-[11px] text-text-muted">
-            Chrome demandera l’accès au micro : c’est l’entrée audio, pas un micro.
+            {listener
+              ? 'Un tap et tu entends la jam (Chrome ou Edge ; iPhone pas encore).'
+              : 'Chrome demandera l’accès au micro : c’est l’entrée audio, pas un micro.'}
           </span>
         </div>
       )}

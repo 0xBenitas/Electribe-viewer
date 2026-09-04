@@ -29,7 +29,7 @@
       "title": "Auditeur",
       "who": "Il écoute, c’est tout",
       "needs": [
-        "Le lien de la session, puis « Écouter » et « Écouter la jam »",
+        "Le lien d’écoute, puis un tap sur « Écouter la jam »",
         "Rien à installer, Chrome ou Edge sur ordi ou Android"
       ]
     }
@@ -75,14 +75,14 @@
       ]
     },
     {
-      "title": "Écouter depuis un téléphone",
+      "title": "Écouter sans instrument",
       "steps": [
         {
-          "text": "Dans la session, le bouton « Lien d’écoute » copie une page qui joue le mix. Elle marche sur iPhone :",
+          "text": "Dans la session, le bouton « Lien d’écoute » copie un lien qui ouvre la session directement en mode écoute. Un seul tap sur « Écouter la jam » et ça joue :",
           "code": "listen"
         },
         {
-          "text": "Le flux tourne en continu : « En direct » s’affiche même quand personne ne joue."
+          "text": "Ça marche dans Chrome ou Edge, sur ordi ou Android. iPhone : pas encore (Safari ne sait pas décoder ce son)."
         }
       ]
     },
