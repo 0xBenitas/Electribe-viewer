@@ -385,14 +385,18 @@ class AudioEngine {
         this.master.connect(this.analyser).connect(ctx.destination);
         this.ctx = ctx;
         ctx.onstatechange = () => {
+          useAudioStore.getState().setCtxState(ctx.state);
           // Retour d'une suspension (appel, onglet en arrière-plan) : realigner.
           if (ctx.state === 'running') this.resync();
         };
+        useAudioStore.getState().setCtxState(ctx.state);
+        useAudioStore.getState().setDecoder(hasWebCodecsDecoder() ? 'webcodecs' : 'wasm');
         this.resyncTimer = setInterval(() => this.resync(), RESYNC_MS);
         this.statsTimer = setInterval(() => this.flushStats(), STATS_FLUSH_MS);
       }
       await this.ctx.resume();
       if (myGen !== this.gen) return;
+      useAudioStore.getState().setCtxState(this.ctx.state);
       this.resync();
       store.setWarning(null);
       if (!opts.capture) {
@@ -693,6 +697,19 @@ class AudioEngine {
     const ctxFrame = Math.round(contextTime * SAMPLE_RATE);
     const gridSample = sampleAt(grid, clockSync.serverNow(perfTime));
     p.sync(ctxFrame, gridSample);
+  }
+
+  /** iOS peut laisser le contexte suspendu : à rappeler depuis un tap. */
+  async resume(): Promise<void> {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    try {
+      await ctx.resume();
+    } catch (e) {
+      diag.decoderError = `resume: ${String(e)}`;
+    }
+    useAudioStore.getState().setCtxState(ctx.state);
+    this.resync();
   }
 
   /** Réaligne tous les lecteurs sur l'horloge serveur (timer, 1er pong, reprise). */

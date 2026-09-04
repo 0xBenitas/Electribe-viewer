@@ -52,6 +52,17 @@ export function JamAudio() {
   const warning = useAudioStore((s) => s.warning);
   const selfMonitor = useAudioStore((s) => s.selfMonitor);
   const directMonitor = useAudioStore((s) => s.directMonitor);
+  const ctxState = useAudioStore((s) => s.ctxState);
+  const decoder = useAudioStore((s) => s.decoder);
+  const framesReceived = useAudioStore((s) => s.framesReceived);
+  const [diagCopied, setDiagCopied] = useState(false);
+  const copyDiag = () => {
+    const text = JSON.stringify({ ...audioEngine.stats(), ua: navigator.userAgent }, null, 1);
+    void navigator.clipboard?.writeText(text).then(() => {
+      setDiagCopied(true);
+      setTimeout(() => setDiagCopied(false), 2000);
+    });
+  };
 
   const machineBpm = useClockStore((s) => s.bpm);
 
@@ -197,6 +208,20 @@ export function JamAudio() {
         </div>
       )}
 
+      {running && ctxState !== 'running' && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-yellow/60 bg-bg-3 p-2 text-xs text-yellow">
+          Le son est en pause côté navigateur ({ctxState}).
+          <button
+            onClick={() => void audioEngine.resume()}
+            className="btn-acid bg-yellow px-3 py-1 text-xs font-bold text-[#1a1400]"
+            style={{ borderWidth: '2px', boxShadow: '2px 2px 0 #000' }}
+          >
+            Débloquer le son
+          </button>
+          <span className="text-text-dim">iPhone : monte le volume et vérifie l’interrupteur silencieux.</span>
+        </div>
+      )}
+
       {running && (
         <div className="grid gap-3 md:grid-cols-[1fr_1fr]">
           {/* Mon envoi */}
@@ -316,6 +341,20 @@ export function JamAudio() {
             ) : (
               <span className="text-[11px] text-text-muted">L’hôte règle la grille. Mets ta machine au même BPM.</span>
             )}
+          </div>
+
+          {/* Diagnostic (à copier-coller quand ça ne sonne pas) */}
+          <div className="flex flex-wrap items-center gap-2 text-[10px] text-text-muted md:col-span-2">
+            <span>
+              diag : décodeur {decoder || '?'} · audio {ctxState} · reçues {framesReceived} · sortie {outLevel.toFixed(3)}
+              {' · '}grille {grid ? `#${grid.id}` : '?'}
+            </span>
+            <button
+              onClick={copyDiag}
+              className="rounded border border-line px-2 py-0.5 text-[10px] text-text-dim hover:text-text"
+            >
+              {diagCopied ? 'Copié ✓' : 'Copier le diagnostic'}
+            </button>
           </div>
 
           {/* Les autres */}

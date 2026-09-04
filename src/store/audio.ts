@@ -42,9 +42,15 @@ interface AudioStore {
   directMonitor: boolean;
   /** Avertissement non bloquant (ex. pas d'entrée : on écoute seulement). */
   warning: string | null;
+  /** État du contexte Web Audio ('running' = ça peut sonner). */
+  ctxState: string;
+  /** Décodeur en service : 'webcodecs' (natif) ou 'wasm' (secours). */
+  decoder: string;
 
   setSupported: (playback: boolean, capture: boolean) => void;
   setSelfMonitor: (v: boolean) => void;
+  setCtxState: (state: string) => void;
+  setDecoder: (d: string) => void;
   setDirectMonitor: (v: boolean) => void;
   setWarning: (w: string | null) => void;
   setStatus: (status: AudioStatus, error?: string | null) => void;
@@ -83,9 +89,13 @@ export const useAudioStore = create<AudioStore>((set) => ({
   selfMonitor: false,
   directMonitor: true,
   warning: null,
+  ctxState: 'none',
+  decoder: '',
 
   setSupported: (supported, canCapture) => set({ supported, canCapture }),
   setSelfMonitor: (selfMonitor) => set({ selfMonitor }),
+  setCtxState: (ctxState) => set({ ctxState }),
+  setDecoder: (decoder) => set({ decoder }),
   setDirectMonitor: (directMonitor) => set({ directMonitor }),
   setWarning: (warning) => set({ warning }),
   setStatus: (status, error = null) => set({ status, error }),
