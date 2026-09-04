@@ -3,6 +3,7 @@ import { useLobbies } from '../net/useLobbies.ts';
 import { loadPrefs, savePrefs } from '../lib/sessionPrefs.ts';
 import type { SessionConnectConfig } from '../net/useSessionSync.ts';
 import type { LobbyInfo } from '../core/session/protocol.ts';
+import { audioEngine } from '../audio/engine.ts';
 
 const inputCls =
   'rounded-md border-2 border-black bg-bg-3 px-3 py-2 text-sm text-text outline-none focus:border-blue';
@@ -53,7 +54,9 @@ export function LobbyBrowser({ onConnect }: Props) {
   }, []);
 
   const go = (targetRoom: string, listenOnly: boolean) => {
-    const n = name.trim();
+    // Écouter = un seul tap : pas de nom obligatoire, et le son démarre sur ce
+    // tap (le geste utilisateur qu'exige le navigateur pour jouer de l'audio).
+    const n = name.trim() || (listenOnly ? 'Auditeur' : '');
     if (!n) {
       setNeedName(true);
       nameRef.current?.focus();
@@ -62,6 +65,7 @@ export function LobbyBrowser({ onConnect }: Props) {
     const r = targetRoom.trim() || 'jam';
     const s = server.trim();
     savePrefs({ name: n, room: r, server: s });
+    if (listenOnly && audioEngine.isSupported()) void audioEngine.start({ capture: false });
     onConnect({ url: s, room: r, name: n, listenOnly });
   };
 
@@ -69,7 +73,10 @@ export function LobbyBrowser({ onConnect }: Props) {
     <section className="card-acid flex flex-col gap-4 bg-bg-2 p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-lg font-extrabold tracking-tight text-text">
-          Sessions en cours
+          Jams en cours
+          <span className="ml-3 text-[10px] font-normal uppercase tracking-[0.16em] text-text-dim">
+            écoute en un tap · rien à installer
+          </span>
         </h2>
         <span className="text-[10px] uppercase tracking-[0.16em] text-text-dim">
           {status === 'open'
@@ -220,8 +227,11 @@ function LobbyRow({
             </span>
           )}
           {(lobby.audioPeers ?? 0) > 0 && (
-            <span className="text-[11px]" title="Du son passe dans le navigateur">
-              🔊
+            <span
+              className="pill-acid bg-green px-2 py-0.5 text-[9px] font-bold tracking-[0.14em] text-[#0a1404]"
+              title="Du son passe dans le navigateur en ce moment"
+            >
+              SON EN DIRECT
             </span>
           )}
         </div>
@@ -239,11 +249,11 @@ function LobbyRow({
         </button>
         <button
           onClick={onListen}
-          title="Rejoindre sans machine, juste pour écouter et suivre"
-          className="btn-acid bg-bg-2 px-3.5 py-1.5 text-sm text-text-dim"
+          title="Écouter tout de suite, sans machine ni nom"
+          className="btn-acid bg-cyan px-3.5 py-1.5 text-sm font-bold text-[#04211c]"
           style={{ borderWidth: '2px', boxShadow: '3px 3px 0 #000' }}
         >
-          Écouter
+          🔊 Écouter
         </button>
       </div>
     </div>

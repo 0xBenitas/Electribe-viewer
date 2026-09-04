@@ -111,10 +111,10 @@ export function App() {
       <div className="relative z-[1] mx-auto flex max-w-6xl flex-col gap-[18px] px-6 pb-[72px] pt-6">
         <CockpitHeader room={sessionConfig?.room ?? null} />
 
-        {!listenOnly && <ConnectionStatus />}
         {sessionConfig === null ? (
           <>
             <LobbyBrowser onConnect={setSessionConfig} />
+            <ConnectionStatus />
             <GuideSection />
           </>
         ) : (
@@ -125,6 +125,7 @@ export function App() {
               onDisconnect={() => setSessionConfig(null)}
             />
             <JamAudio />
+            {!listenOnly && <ConnectionStatus />}
           </>
         )}
 
