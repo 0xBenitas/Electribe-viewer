@@ -41,6 +41,7 @@ export function JamAudio() {
   const error = useAudioStore((s) => s.error);
   const grid = useAudioStore((s) => s.grid);
   const inputs = useAudioStore((s) => s.inputs);
+  const inputsListed = useAudioStore((s) => s.inputsListed);
   const inputId = useAudioStore((s) => s.inputId);
   const capturing = useAudioStore((s) => s.capturing);
   const muted = useAudioStore((s) => s.muted);
@@ -137,6 +138,12 @@ export function JamAudio() {
       )}
       {error && <p className="text-xs text-red">{error}</p>}
       {warning && <p className="text-xs text-yellow">{warning}</p>}
+      {supported && !listener && inputsListed && inputs.length === 0 && (
+        <p className="text-xs text-yellow">
+          Chrome ne voit <b>aucune entrée audio</b> sur cet ordinateur. Windows → Paramètres → Son → Entrée doit lister
+          une prise ligne / micro ou une carte son, activée. Branche, puis ↻.
+        </p>
+      )}
 
       {supported && !running && status !== 'starting' && (
         <div className="flex flex-wrap items-center gap-2">

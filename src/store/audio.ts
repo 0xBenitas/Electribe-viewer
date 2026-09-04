@@ -24,6 +24,8 @@ interface AudioStore {
   error: string | null;
   grid: AudioGrid | null;
   inputs: AudioInput[];
+  /** enumerateDevices a répondu au moins une fois (sinon on ne sait pas). */
+  inputsListed: boolean;
   inputId: string | null;
   capturing: boolean;
   muted: boolean;
@@ -66,6 +68,7 @@ export const useAudioStore = create<AudioStore>((set) => ({
   error: null,
   grid: null,
   inputs: [],
+  inputsListed: false,
   inputId: null,
   capturing: false,
   muted: false,
@@ -83,7 +86,7 @@ export const useAudioStore = create<AudioStore>((set) => ({
   setWarning: (warning) => set({ warning }),
   setStatus: (status, error = null) => set({ status, error }),
   setGrid: (grid) => set({ grid }),
-  setInputs: (inputs) => set({ inputs }),
+  setInputs: (inputs) => set({ inputs, inputsListed: true }),
   setInputId: (inputId) => set({ inputId }),
   setCapturing: (capturing) => set({ capturing }),
   setMuted: (muted) => set({ muted }),
