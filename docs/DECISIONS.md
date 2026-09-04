@@ -301,3 +301,34 @@ changement de pattern sur la machine l'a ramené — mais un Write aurait tout p
 
 **Conséquence.** Un envoi prend ~70 ms de plus (aller-retour 0x10/0x40 mesuré à
 63 ms en §5.1). Acceptable pour une action explicite, hors chemin live.
+
+## ADR-007: Le son dans le navigateur — intervalles façon NINJAM sur le relais existant
+
+**Contexte.** Première tentative de jam (04/09/2026) : Jamtaba « impossible to
+connect » (port 2049 filtré côté client), une fenêtre de connexion, des
+préférences audio, un bouton Transmit… Bastien : « faut que l'user arrive, paf,
+il a tout, le plus simplement ». Le cockpit impose déjà Chrome/Edge (Web MIDI),
+qui embarquent WebCodecs (Opus) et les AudioWorklets.
+
+**Décision.** L'audio passe **dans l'onglet**, sur le **même WebSocket** que la
+session, en trames binaires que le relais renvoie sans décoder (`audioFrame.ts`,
+`hub.audioRecipients`). Le principe NINJAM est conservé, pas le protocole :
+- la room a une **grille** `{bpm, bpi, anchor}` en temps serveur (`grid.ts`),
+  réglée par l'hôte (`{t:'grid'}`), reçue dans `welcome` ;
+- chaque client date ses tranches Opus (20 ms) sur cette grille (intervalle +
+  offset en échantillons), grâce à une horloge serveur estimée par les ping/pong
+  (`clockSync.ts`, plus petit RTT) ;
+- un pair est joué **un intervalle plus tard**, au même offset, par un worklet
+  lecteur à anneau indexé en temps de grille (`public/worklets/player.js`) ;
+- capture : `getUserMedia` sans traitement vocal → worklet 960 échantillons →
+  `AudioEncoder` Opus 96 kb/s stéréo (`engine.ts`).
+- Jamtaba/NINJAM restent en **mode expert** (Atelier, guide en dernier) ; les
+  deux mondes ne se mélangent pas.
+
+**Conséquences.** Rien à installer ; il reste le câble machine → carte son.
+Précision d'alignement ≈ ±20 ms (RTT/2 + latence d'entrée supposée 20 ms), sans
+effet audible avec un intervalle de retard. Intervalle plafonné à 16 s (anneau
+de 32 s). Le flux Icecast `/live` et `ecouter.html` n'entendent PAS le son du
+navigateur (mixeur NINJAM) : à traiter (mix côté hôte → Icecast, ou lecteur
+web). Safari/iPhone : pas de WebCodecs audio → écoute impossible pour l'instant.
+Tempo changé par l'hôte = grille ré-ancrée immédiatement (petit trou, assumé).

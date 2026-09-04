@@ -64,6 +64,17 @@ d'omexom possède déjà 80/443). Il est intégré au hub :
   sont celles du parseur upstream (`AnonymousUsers yes`, pas `DefaultUser`) : une
   directive inconnue est ignorée en silence, le serveur démarre quand même.
 
+## Son dans le navigateur (ADR-007, 2026-09-04)
+
+Le relais `jamboree-ws` renvoie désormais des trames binaires (audio Opus) en plus
+du JSON : **rebuild obligatoire** à chaque changement de `server/` ou `src/core/`
+(`cd /opt/omexom && docker compose up -d --build jamboree-ws`). Les worklets audio
+sont des fichiers statiques `public/worklets/*.js` copiés dans `dist/` au build du
+cockpit. Bande passante : ~96 kb/s par musicien, vers chaque autre membre.
+Test de bout en bout après déploiement : `node scripts/e2e-son.mjs` (Playwright,
+faux micro Chrome) — vérifié le 04/09/2026 : 581 tranches envoyées, 527 reçues
+et jouées, signal en sortie.
+
 ## Port NINJAM de secours (2026-09-04)
 
 2049 est le port NFS : des box et réseaux d'entreprise le filtrent en sortie, et

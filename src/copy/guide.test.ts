@@ -15,8 +15,9 @@ describe('copy/guide.json', () => {
   it('ne référence que des chips connues (ninjam, listen) et des liens https', () => {
     for (const s of copy.sections) {
       for (const step of s.steps) {
-        if ('code' in step) expect(['ninjam', 'listen']).toContain(step.code);
-        if ('link' in step && step.link) expect(step.link.href).toMatch(/^https:\/\//);
+        const st = step as { code?: string; link?: { href: string } };
+        if (st.code) expect(['ninjam', 'listen']).toContain(st.code);
+        if (st.link) expect(st.link.href).toMatch(/^https:\/\//);
       }
     }
     for (const l of copy.links.items) expect(l.href).toMatch(/^https:\/\//);

@@ -1,9 +1,10 @@
 // Session relay — pure room/fan-out logic, no I/O.
 //
 // The server is a thin fan-out relay (JAMBOREE §6): presence, the host's shared
-// transport, device-state replication, and bar-aligned cues. No audio touches
-// this socket. Keeping the logic pure makes it fully unit-testable; the `ws`
-// adapter (index.ts) only maps sockets to peer ids and ships the bytes.
+// transport, device-state replication, bar-aligned cues, and (ADR-007) the
+// audio grid + the recipients of the binary audio frames. Keeping the logic pure
+// makes it fully unit-testable; the `ws` adapter (index.ts) only maps sockets
+// to peer ids and ships the bytes.
 
 import type {
   ClientMessage,
@@ -15,6 +16,7 @@ import type {
   TransportTick,
 } from '../src/core/session/protocol.ts';
 import type { DeviceSnapshot } from '../src/core/session/snapshot.ts';
+import { clampGrid, type AudioGrid } from '../src/core/audio/grid.ts';
 
 export interface Outbound {
   /** Peer ids that should receive `msg`. */
@@ -30,6 +32,8 @@ interface Member {
 
 export class SessionHub {
   private readonly members = new Map<string, Member>();
+  /** Audio grid per room (ADR-007). Created on first join, kept while the room lives. */
+  private readonly grids = new Map<string, AudioGrid>();
 
   constructor(private readonly now: () => number = Date.now) {}
 
@@ -58,7 +62,23 @@ export class SessionHub {
         return [
           { recipients: [peerId], msg: { t: 'lobbies', rooms: this.buildLobbies() } },
         ];
+      case 'grid':
+        return this.setGrid(peerId, msg.bpm, msg.bpi);
     }
+  }
+
+  /**
+   * Binary audio frame from `peerId` (ADR-007): everyone else in its room gets
+   * it — players AND listeners. Empty if the sender is in no room.
+   */
+  audioRecipients(peerId: string): string[] {
+    const member = this.members.get(peerId);
+    return member ? this.others(peerId, member.room) : [];
+  }
+
+  /** Current grid of a room, or null if the room has no member. */
+  gridOf(room: string): AudioGrid | null {
+    return this.grids.get(room) ?? null;
   }
 
   disconnect(peerId: string): Outbound[] {
@@ -67,7 +87,10 @@ export class SessionHub {
     this.members.delete(peerId);
 
     const others = this.roomPeerIds(member.room);
-    if (others.length === 0) return [];
+    if (others.length === 0) {
+      this.grids.delete(member.room); // last one out: the grid dies with the room
+      return [];
+    }
 
     const out: Outbound[] = [
       { recipients: others, msg: { t: 'peer-leave', peer: peerId } },
@@ -106,10 +129,15 @@ export class SessionHub {
     const isHost = !info.listener && !existing.some((p) => p.isHost);
     const state: PeerState = { id: peerId, info, isHost };
     this.members.set(peerId, { room, state, joinedAt: this.now() });
+    let grid = this.grids.get(room);
+    if (!grid) {
+      grid = { id: 1, bpm: 120, bpi: 16, anchor: this.now() };
+      this.grids.set(room, grid);
+    }
 
     out.push({
       recipients: [peerId],
-      msg: { t: 'welcome', self: peerId, peers: existing },
+      msg: { t: 'welcome', self: peerId, peers: existing, grid },
     });
     const others = this.others(peerId, room);
     if (others.length) {
@@ -137,6 +165,17 @@ export class SessionHub {
         },
       },
     ];
+  }
+
+  /** Host only. Re-anchored NOW: a brief glitch on tempo change beats drift. */
+  private setGrid(peerId: string, bpm: number, bpi: number): Outbound[] {
+    const member = this.members.get(peerId);
+    if (!member || !member.state.isHost) return [];
+    const prev = this.grids.get(member.room);
+    const c = clampGrid(bpm, bpi);
+    const grid: AudioGrid = { id: ((prev?.id ?? 0) % 255) + 1, ...c, anchor: this.now() };
+    this.grids.set(member.room, grid);
+    return [{ recipients: this.roomPeerIds(member.room), msg: { t: 'grid', grid } }];
   }
 
   private device(peerId: string, snapshot: DeviceSnapshot): Outbound[] {

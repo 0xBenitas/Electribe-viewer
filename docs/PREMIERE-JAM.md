@@ -41,6 +41,16 @@
 4. **Clock EMX2** : le BPM affiché dans le cockpit suit la machine (`0xF8`,
    `MIDI_FINDINGS.md` §clock, cases encore vides).
 
+## 04/09 soir : le son passe dans le navigateur (ADR-007)
+
+Jamtaba n'est plus nécessaire. Dans la session, panneau **SON** : choisir
+l'entrée de la carte son, « Jouer : activer mon son ». L'hôte règle la grille
+(BPM × temps par intervalle). Chacun entend les autres avec un intervalle de
+retard (principe NINJAM), calé sur la même grille. Auditeurs : « Écouter » puis
+« Écouter la jam » (Chrome/Edge). Jamtaba reste en mode expert (guide, dernière
+section). ⚠️ `/live` et `ecouter.html` n'entendent pas ce son (ils écoutent le
+mixeur NINJAM) : à traiter.
+
 ## Le mode d'emploi est dans l'app
 
 Depuis le 04/09, l'accueil de <https://jamboreeeeeeee.duckdns.org> affiche une carte

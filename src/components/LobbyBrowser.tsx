@@ -136,9 +136,9 @@ export function LobbyBrowser({ onConnect }: Props) {
 
       {/* Audio reminder — the single biggest point of confusion. */}
       <p className="text-[11px] text-text-muted">
-        🔊 Le son passe par ton client NINJAM (Jamtaba ou Reaper), <b>pas</b> par
-        cet onglet — ouvrir un 2ᵉ onglet ne te fera rien entendre. Tout est
-        expliqué dans le{' '}
+        🔊 Le son passe <b>dans cet onglet</b> (Chrome ou Edge) : une fois dans la
+        session, « Jouer : activer mon son », et l’entrée où ta machine est branchée.
+        Tout est expliqué dans le{' '}
         <a href="#mode-demploi" className="text-blue underline underline-offset-2">
           mode d’emploi
         </a>{' '}

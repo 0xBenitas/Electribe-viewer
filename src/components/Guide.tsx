@@ -1,5 +1,32 @@
 import { useEffect, useState } from 'react';
-import copy from '../copy/guide.json';
+import guideJson from '../copy/guide.json';
+
+// Type explicite du JSON (l'inférence sur des sections hétérogènes se perd).
+interface GuideStep {
+  text: string;
+  code?: 'ninjam' | 'listen';
+  link?: { label: string; href: string };
+}
+interface GuideSectionCopy {
+  title: string;
+  figure?: string;
+  steps: GuideStep[];
+}
+interface GuideCopy {
+  title: string;
+  tagline: string;
+  session: { title: string; share: string; listen: string };
+  rolesTitle: string;
+  roles: { title: string; who: string; needs: string[] }[];
+  sections: GuideSectionCopy[];
+  pitfalls: { title: string; items: string[] };
+  links: { title: string; items: { label: string; href: string }[] };
+  copy: string;
+  copied: string;
+  close: string;
+  open: string;
+}
+const copy = guideJson as GuideCopy;
 import { NINJAM_TARGET } from '../lib/ninjamHost.ts';
 import { buildShareLink } from '../lib/sessionPrefs.ts';
 import { JamtabaFigure } from './JamtabaFigure.tsx';
@@ -110,18 +137,18 @@ export function GuideContent({ room, server }: Ctx) {
           <h3 className="text-xs font-bold uppercase tracking-wider text-text-dim">
             {i + 1}. {s.title}
           </h3>
-          {'figure' in s && s.figure === 'jamtaba' && <JamtabaFigure />}
+          {s.figure === 'jamtaba' && <JamtabaFigure />}
           <ol className="flex list-decimal flex-col gap-2 pl-5 text-xs">
             {s.steps.map((step) => (
               <li key={step.text}>
                 {step.text}
-                {'link' in step && step.link && (
+                {step.link && (
                   <>
                     {' '}
                     <ExtLink href={step.link.href} label={step.link.label} />
                   </>
                 )}
-                {'code' in step && step.code && <CopyChip value={chip(step.code)} />}
+                {step.code && <CopyChip value={chip(step.code)} />}
               </li>
             ))}
           </ol>

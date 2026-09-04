@@ -14,3 +14,11 @@ export function setActiveClient(client: SessionClient | null): void {
 export function sendCue(cue: Cue): void {
   active?.sendCue(cue);
 }
+
+export function sendAudioFrame(bytes: Uint8Array): void {
+  active?.sendBinary(bytes);
+}
+
+export function sendGrid(bpm: number, bpi: number): void {
+  active?.sendGrid(bpm, bpi);
+}

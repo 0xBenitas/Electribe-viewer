@@ -22,7 +22,7 @@ describe('SessionHub', () => {
     const hub = new SessionHub(() => 1);
     const out = hub.handle('a', { t: 'join', room: 'jam', info: { name: 'A' } });
     const welcome = to(out, 'a');
-    expect(welcome?.msg).toEqual({ t: 'welcome', self: 'a', peers: [] });
+    expect(welcome?.msg).toMatchObject({ t: 'welcome', self: 'a', peers: [] });
   });
 
   it('tells the joiner about existing peers and notifies them', () => {
@@ -235,6 +235,50 @@ describe('SessionHub', () => {
       if (welcome?.msg.t === 'welcome') {
         expect(welcome.msg.peers.map((p) => p.id)).toEqual(['a']);
       }
+    });
+  });
+
+  describe('audio grid (ADR-007)', () => {
+    it('welcome porte une grille par défaut ancrée à la création de la room', () => {
+      const hub = new SessionHub(() => 5000);
+      const out = hub.handle('a', { t: 'join', room: 'jam', info: { name: 'A' } });
+      const welcome = to(out, 'a');
+      expect(welcome?.msg).toMatchObject({
+        t: 'welcome',
+        grid: { id: 1, bpm: 120, bpi: 16, anchor: 5000 },
+      });
+      expect(hub.gridOf('jam')).toEqual({ id: 1, bpm: 120, bpi: 16, anchor: 5000 });
+    });
+
+    it('seul l’hôte change la grille ; tout le monde la reçoit, id incrémenté', () => {
+      let t = 100;
+      const hub = new SessionHub(() => t);
+      hub.handle('a', { t: 'join', room: 'jam', info: { name: 'A' } });
+      hub.handle('b', { t: 'join', room: 'jam', info: { name: 'B' } });
+      expect(hub.handle('b', { t: 'grid', bpm: 128, bpi: 8 })).toEqual([]);
+      t = 900;
+      const out = hub.handle('a', { t: 'grid', bpm: 128.04, bpi: 8 });
+      expect(to(out, 'a', 'b')?.msg).toEqual({
+        t: 'grid',
+        grid: { id: 2, bpm: 128, bpi: 8, anchor: 900 },
+      });
+    });
+
+    it('les trames audio vont à tous les autres membres, auditeurs compris', () => {
+      const hub = new SessionHub(() => 1);
+      hub.handle('a', { t: 'join', room: 'jam', info: { name: 'A' } });
+      hub.handle('b', { t: 'join', room: 'jam', info: { name: 'B' } });
+      hub.handle('l', { t: 'join', room: 'jam', info: { name: 'L', listener: true } });
+      hub.handle('z', { t: 'join', room: 'autre', info: { name: 'Z' } });
+      expect(hub.audioRecipients('a').sort()).toEqual(['b', 'l']);
+      expect(hub.audioRecipients('nobody')).toEqual([]);
+    });
+
+    it('la grille meurt avec la room', () => {
+      const hub = new SessionHub(() => 1);
+      hub.handle('a', { t: 'join', room: 'jam', info: { name: 'A' } });
+      hub.disconnect('a');
+      expect(hub.gridOf('jam')).toBeNull();
     });
   });
 });

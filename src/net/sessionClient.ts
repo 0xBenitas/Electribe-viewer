@@ -14,8 +14,10 @@ import type {
 import type { DeviceSnapshot } from '../core/session/snapshot.ts';
 
 export interface SocketLike {
-  send(data: string): void;
+  send(data: string | Uint8Array): void;
   close(): void;
+  /** 'arraybuffer' pour recevoir les trames audio en binaire (ADR-007). */
+  binaryType?: string;
   onopen: ((ev: unknown) => void) | null;
   onmessage: ((ev: { data: unknown }) => void) | null;
   onclose: ((ev: unknown) => void) | null;
@@ -31,6 +33,8 @@ export interface SessionClientOptions {
   room: string;
   info: PeerInfo;
   onMessage: (msg: ServerMessage) => void;
+  /** Trame binaire (audio d'un pair, ADR-007). */
+  onBinary?: (bytes: Uint8Array) => void;
   onStatus?: (status: SessionStatus) => void;
   /** Override the socket constructor (tests). Defaults to global WebSocket. */
   factory?: SocketFactory;
@@ -85,6 +89,7 @@ export class SessionClient {
     this.clearReconnect();
     const make = this.opts.factory ?? defaultSocketFactory;
     const socket = make(this.opts.url);
+    socket.binaryType = 'arraybuffer';
     this.socket = socket;
     this.opts.onStatus?.('connecting');
 
@@ -104,6 +109,10 @@ export class SessionClient {
     };
     socket.onmessage = (ev) => {
       if (this.socket !== socket) return; // ignore frames from a superseded socket
+      if (ev.data instanceof ArrayBuffer) {
+        this.opts.onBinary?.(new Uint8Array(ev.data));
+        return;
+      }
       let msg: ServerMessage;
       try {
         msg = JSON.parse(String(ev.data)) as ServerMessage;
@@ -220,6 +229,20 @@ export class SessionClient {
 
   sendCue(cue: Cue): void {
     this.send({ t: 'cue', cue });
+  }
+
+  /** Hôte : grille audio de la room (ADR-007). */
+  sendGrid(bpm: number, bpi: number): void {
+    this.send({ t: 'grid', bpm, bpi });
+  }
+
+  /** Trame audio binaire (ADR-007) ; silencieusement perdue si le lien est fermé. */
+  sendBinary(bytes: Uint8Array): void {
+    try {
+      this.socket?.send(bytes);
+    } catch {
+      // lien pas prêt : la tranche est perdue, la suivante passera
+    }
   }
 
   disconnect(): void {

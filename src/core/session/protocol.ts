@@ -1,9 +1,14 @@
 // WebSocket session protocol (JAMBOREE §5, §6).
 // One room = one jam session. The server is a thin fan-out relay: presence,
 // shared BPM (host is the single source of truth), device-state replication,
-// and bar-aligned non-verbal cues. No audio touches this socket.
+// and bar-aligned non-verbal cues. Audio (ADR-007) travels on the same socket
+// as BINARY frames (see audioFrame.ts) that the relay fans out without decoding;
+// the JSON messages below carry the audio GRID (bpm/bpi/anchor) aligning them.
 
 import type { DeviceSnapshot } from './snapshot.ts';
+import type { AudioGrid } from '../audio/grid.ts';
+
+export type { AudioGrid };
 
 export type PeerId = string;
 
@@ -80,15 +85,19 @@ export type ClientMessage =
   | { t: 'cue'; cue: Cue }
   | { t: 'ping'; ts: number }
   // Lobby discovery: ask for the live sessions without joining one.
-  | { t: 'lobbies' };
+  | { t: 'lobbies' }
+  // Host only: set the audio interval grid of the room (ADR-007).
+  | { t: 'grid'; bpm: number; bpi: number };
 
 /** Messages the server broadcasts to clients. */
 export type ServerMessage =
-  | { t: 'welcome'; self: PeerId; peers: PeerState[] }
+  | { t: 'welcome'; self: PeerId; peers: PeerState[]; grid: AudioGrid }
   | { t: 'peer-join'; peer: PeerState }
   | { t: 'peer-leave'; peer: PeerId }
   | ({ t: 'transport'; host: PeerId; serverTs: number } & TransportTick)
   | { t: 'device'; peer: PeerId; snapshot: DeviceSnapshot }
   | { t: 'cue'; peer: PeerId; cue: Cue }
   | { t: 'pong'; ts: number; serverTs: number }
-  | { t: 'lobbies'; rooms: LobbyInfo[] };
+  | { t: 'lobbies'; rooms: LobbyInfo[] }
+  // The room's audio grid (on join, and whenever the host changes it).
+  | { t: 'grid'; grid: AudioGrid };

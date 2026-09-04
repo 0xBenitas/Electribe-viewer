@@ -5,6 +5,8 @@ import { useMemo } from 'react';
 import { useSessionStore } from '../store/session.ts';
 import { useCueStore } from '../store/cues.ts';
 import { snapshotToMachine } from '../model/adapters.ts';
+import { audioEngine } from '../audio/engine.ts';
+import { clockSync } from '../audio/clock.ts';
 import type { ServerMessage } from '../core/session/protocol.ts';
 import type { Machine } from '../model/machine.ts';
 
@@ -21,8 +23,12 @@ export function dispatchServerMessage(msg: ServerMessage): void {
       // No existing host among the others → we're the first joiner, i.e. host.
       const existingHost = msg.peers.find((p) => p.isHost);
       store.setHostId(existingHost ? existingHost.id : msg.self);
+      audioEngine.setGrid(msg.grid);
       break;
     }
+    case 'grid':
+      audioEngine.setGrid(msg.grid);
+      break;
     case 'peer-join':
       // A host-promotion peer-join is echoed to the promoted peer too: adopt the
       // host change but don't add ourselves to our own peer list (ghost/double).
@@ -31,6 +37,7 @@ export function dispatchServerMessage(msg: ServerMessage): void {
       break;
     case 'peer-leave':
       store.removePeer(msg.peer);
+      audioEngine.dropPeer(msg.peer);
       // Host left: clear until the promotion peer-join names the successor.
       if (useSessionStore.getState().hostId === msg.peer) store.setHostId(null);
       break;
@@ -50,10 +57,14 @@ export function dispatchServerMessage(msg: ServerMessage): void {
     case 'cue':
       useCueStore.getState().add({ cue: msg.cue, peer: msg.peer });
       break;
-    case 'pong':
+    case 'pong': {
       // RTT to the session server: now minus the ts we sent (perf-clock domain).
-      store.setLatency(Math.round(performance.now() - msg.ts));
+      const now = performance.now();
+      store.setLatency(Math.round(now - msg.ts));
+      // Horloge serveur estimée : c'est elle qui date les tranches audio (ADR-007).
+      clockSync.addSample({ sentPerf: msg.ts, recvPerf: now, serverTs: msg.serverTs });
       break;
+    }
   }
 }
 

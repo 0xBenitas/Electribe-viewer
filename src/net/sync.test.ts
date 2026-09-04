@@ -6,6 +6,8 @@ import { buildCue } from '../model/cues.ts';
 import type { DeviceSnapshot } from '../core/session/snapshot.ts';
 import type { PeerState } from '../core/session/protocol.ts';
 
+const grid = { id: 1, bpm: 120, bpi: 16, anchor: 0 };
+
 const snap = (updatedAt: number, activePart: number | null = 1): DeviceSnapshot => ({
   profileId: 'korg-electribe-2',
   model: 'Electribe 2',
@@ -29,7 +31,7 @@ describe('dispatchServerMessage', () => {
 
   it('welcome sets self id (keeping our name) and seeds existing peers', () => {
     useSessionStore.getState().setSelf('', { name: 'Bastou' });
-    dispatchServerMessage({ t: 'welcome', self: 'p3', peers: [peer('p1', true)] });
+    dispatchServerMessage({ t: 'welcome', self: 'p3', peers: [peer('p1', true)], grid });
     const st = useSessionStore.getState();
     expect(st.self).toEqual({ id: 'p3', info: { name: 'Bastou' } });
     expect(st.peers.p1!.isHost).toBe(true);
@@ -49,18 +51,18 @@ describe('dispatchServerMessage', () => {
   it('derives host: first joiner is host, else the existing host', () => {
     // No existing host among peers → we are the host.
     useSessionStore.getState().setSelf('', { name: 'B' });
-    dispatchServerMessage({ t: 'welcome', self: 'me', peers: [] });
+    dispatchServerMessage({ t: 'welcome', self: 'me', peers: [], grid });
     expect(useSessionStore.getState().hostId).toBe('me');
 
     useSessionStore.getState().reset();
     useSessionStore.getState().setSelf('', { name: 'B' });
-    dispatchServerMessage({ t: 'welcome', self: 'me', peers: [peer('p1', true)] });
+    dispatchServerMessage({ t: 'welcome', self: 'me', peers: [peer('p1', true)], grid });
     expect(useSessionStore.getState().hostId).toBe('p1');
   });
 
   it('clears host on host departure and adopts a promoted host', () => {
     useSessionStore.getState().setSelf('', { name: 'B' });
-    dispatchServerMessage({ t: 'welcome', self: 'me', peers: [peer('p1', true)] });
+    dispatchServerMessage({ t: 'welcome', self: 'me', peers: [peer('p1', true)], grid });
     dispatchServerMessage({ t: 'peer-leave', peer: 'p1' });
     expect(useSessionStore.getState().hostId).toBeNull();
     dispatchServerMessage({ t: 'peer-join', peer: peer('me', true) });

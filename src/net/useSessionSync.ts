@@ -11,6 +11,8 @@ import { clockSnapshot } from '../midi/bridge.ts';
 import { useSessionStore } from '../store/session.ts';
 import { useCueStore } from '../store/cues.ts';
 import { useConnectionStore } from '../store/connection.ts';
+import { audioEngine } from '../audio/engine.ts';
+import { clockSync } from '../audio/clock.ts';
 import type { Machine } from '../model/machine.ts';
 
 export interface SessionConnectConfig {
@@ -48,6 +50,7 @@ export function useSessionSync(
       room: config.room,
       info: { name: config.name, listener: listenOnly },
       onMessage: dispatchServerMessage,
+      onBinary: (bytes) => audioEngine.onFrame(bytes),
       onStatus: (status) => {
         if (status === 'open') {
           useSessionStore.getState().setLinkStatus('open');
@@ -106,6 +109,8 @@ export function useSessionSync(
       clearInterval(transportTimer);
       setActiveClient(null);
       client.disconnect();
+      audioEngine.leaveSession();
+      clockSync.reset();
       useSessionStore.getState().reset();
       useCueStore.getState().clear();
     };

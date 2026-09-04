@@ -28,6 +28,7 @@ appli.
 - Vite + React 19 + TypeScript (strict), Tailwind v4, Zustand, Dexie.
 - Web MIDI (détection machines + clock), Web USB (identification).
 - Serveur de session WebSocket (Node, `server/`), serveur audio NINJAM.
+- Son dans le navigateur (Chrome/Edge, WebCodecs Opus, intervalles façon NINJAM sur le relais) : `docs/DECISIONS.md` ADR-007.
 - Self-host : Docker + Caddy (voir `docs/DEPLOY.md`).
 - Mode d'emploi intégré (accueil + bouton « ? » en session) : texte dans `src/copy/guide.json`.
 
