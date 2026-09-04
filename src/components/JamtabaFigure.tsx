@@ -38,12 +38,12 @@ export function JamtabaFigure() {
       <rect x={0} y={0} width={560} height={22} fill="#f2f2f2" />
       <text x={10} y={15} fontSize={11} fill="#222">JamTaba</text>
       <rect x={0} y={22} width={560} height={18} fill="#3a3a3a" />
-      {['Preferences', 'View', 'Ninjam', 'Language', 'Theme', 'Help'].map((m, i) => (
-        <text key={m} x={10 + i * 62} y={35} fontSize={10} fill={m === 'Ninjam' ? '#fcc419' : '#cfcfcf'} fontWeight={m === 'Ninjam' ? 700 : 400}>
+      {([['Preferences', 10], ['View', 92], ['Ninjam', 130], ['Language', 196], ['Theme', 262], ['Help', 306]] as const).map(([m, x]) => (
+        <text key={m} x={x} y={35} fontSize={10} fill={m === 'Ninjam' ? '#fcc419' : '#cfcfcf'} fontWeight={m === 'Ninjam' ? 700 : 400}>
           {m}
         </text>
       ))}
-      <rect x={128} y={24} width={44} height={14} fill="none" stroke="#fcc419" strokeWidth={1.5} rx={2} />
+      <rect x={126} y={24} width={44} height={14} fill="none" stroke="#fcc419" strokeWidth={1.5} rx={2} />
 
       {/* panneau gauche : nom, fader, entrée, transmit */}
       <rect x={6} y={46} width={120} height={276} fill="#333" stroke="#1f1f1f" />
@@ -95,7 +95,7 @@ export function JamtabaFigure() {
 
       {/* repères */}
       <Callout x={128} y={76} n={1} />
-      <Callout x={178} y={31} n={2} />
+      <Callout x={176} y={25} n={2} />
       <Callout x={190} y={118} n={3} />
       <Callout x={128} y={270} n={4} />
       <Callout x={128} y={299} n={5} />
