@@ -64,6 +64,16 @@ d'omexom possède déjà 80/443). Il est intégré au hub :
   sont celles du parseur upstream (`AnonymousUsers yes`, pas `DefaultUser`) : une
   directive inconnue est ignorée en silence, le serveur démarre quand même.
 
+## Port NINJAM de secours (2026-09-04)
+
+2049 est le port NFS : des box et réseaux d'entreprise le filtrent en sortie, et
+Jamtaba répond « impossible to connect » sans plus de détail. Le compose de prod
+(`/opt/omexom/docker-compose.yml`) publie aussi **`2050:2049`** (UFW ouvert) :
+même serveur, même room. Vérifié joignable depuis l'extérieur via check-host.net.
+⚠️ `ninjamsrv` bufferise son stdout dans Docker : ses logs n'apparaissent qu'au
+remplissage du buffer, on ne peut pas s'y fier pour diagnostiquer en direct ;
+capturer plutôt les connexions côté hôte (`ss -tan '( sport = :2049 )'`).
+
 ## Écoute web sur mobile (Icecast) — 2026-06-23
 
 Pour qu'un pote écoute le live dans un **navigateur mobile** (iPhone Safari

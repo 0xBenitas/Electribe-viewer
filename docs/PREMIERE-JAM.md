@@ -23,7 +23,7 @@
 | TLS (Caddy) | certificat valide, expire le 19/11/2026 (renouvellement auto) | ✅ |
 | Cockpit | `https://…/` 200, bundle `index-D-Td_xPT.js`, salon de lobbies rendu, **0 erreur console** (Chromium headless), IndexedDB v3 ouverte | ✅ |
 | Relais de session | `wss://…/ws` : handshake WebSocket 101 | ✅ |
-| NINJAM (`jamboree-ninjam`) | port 2049 ouvert au monde (UFW), le serveur répond par un AUTH CHALLENGE, anonymes acceptés, 120 BPM / 16 BPI par défaut, 10 utilisateurs max | ✅ |
+| NINJAM (`jamboree-ninjam`) | port 2049 ouvert au monde (UFW), le serveur répond par un AUTH CHALLENGE, anonymes acceptés, 120 BPM / 16 BPI par défaut, 10 utilisateurs max ; joignable depuis 4 pays (check-host.net, 04/09 soir) ; **port de secours 2050** (même serveur) ajouté le 04/09 car 2049 = port NFS, souvent filtré côté client | ✅ |
 | NINJAM : usage réel | logs : uniquement des scanners (username vide) | ⬜ jamais utilisé |
 | Mixeur radio (`jamboree-ninjamcast`) | 1 connexion établie sur la room ; les erreurs dans ses logs datent du 06/08 (avant le redémarrage du 03/09) | ✅ |
 | Icecast `/live` | `https://…/live` 200 `audio/mpeg`, 137 Ko reçus en 5 s (silence encodé tant que personne ne joue) | ✅ |
@@ -72,6 +72,7 @@ session (lien musiciens + lien d'écoute) à lire aux potes. Texte dans
    « Copier le lien », envoie-le au pote.
 2. **Toi** : ouvre Jamtaba, connexion à un serveur privé :
    `jamboreeeeeeee.duckdns.org` port `2049`, sans mot de passe (login anonyme).
+   Si Jamtaba dit « impossible to connect », port `2050` (secours, même room).
    Dans Jamtaba, règle le BPM sur celui de l'EMX2 (vote BPM) et garde BPI 16
    (= 4 mesures ; 8 pour réagir plus vite).
 3. **Le pote musicien** fait les étapes 1 et 2 de son côté (il rejoint ta session

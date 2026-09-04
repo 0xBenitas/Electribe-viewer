@@ -68,7 +68,7 @@
           "text": "Ignore la liste « Rooms to play » : ce sont les serveurs publics. Menu « Ninjam » → « Connect in private server… »."
         },
         {
-          "text": "Dans la fenêtre : Server = l’adresse ci-dessous, Port = 2049, User name = ton nom, Password = vide. Puis « Connect ».",
+          "text": "Dans la fenêtre : Server = l’adresse ci-dessous (sans le « :2049 »), Port = 2049, User name = ton nom, Password = vide. Puis « Connect ». Si ça dit « impossible to connect », mets Port = 2050 (même serveur, port de secours : 2049 est parfois bloqué par la box ou le réseau).",
           "code": "ninjam"
         },
         {
