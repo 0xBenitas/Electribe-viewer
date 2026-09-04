@@ -1,0 +1,101 @@
+{
+  "title": "Mode d’emploi",
+  "tagline": "Chacun joue chez lui, calé au tempo. Les potes écoutent depuis leur téléphone.",
+  "session": {
+    "title": "Cette session",
+    "share": "Lien à envoyer aux musiciens",
+    "listen": "Lien d’écoute pour les auditeurs"
+  },
+  "rolesTitle": "Qui fait quoi",
+  "roles": [
+    {
+      "title": "Hôte",
+      "who": "Celui qui crée la session",
+      "needs": [
+        "Sa machine en USB, dans Chrome ou Edge",
+        "Jamtaba pour le son",
+        "Il envoie le lien de la session aux autres"
+      ]
+    },
+    {
+      "title": "Musicien",
+      "who": "Il rejoint par le lien",
+      "needs": [
+        "Pareil que l’hôte : machine + Jamtaba",
+        "Sans machine : Jamtaba seul, pour entendre et jouer d’un autre instrument"
+      ]
+    },
+    {
+      "title": "Auditeur",
+      "who": "Il écoute, c’est tout",
+      "needs": [
+        "Le lien d’écoute, sur n’importe quel téléphone",
+        "Rien à installer, iPhone compris"
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "title": "Le son : Jamtaba, pas le navigateur",
+      "steps": [
+        {
+          "text": "Installe Jamtaba, le client NINJAM gratuit (Windows, Mac, Linux). Avec REAPER, le plugin ReaNINJAM fait pareil.",
+          "link": { "label": "Télécharger Jamtaba", "href": "https://github.com/elieserdejesus/JamTaba/releases" }
+        },
+        {
+          "text": "Dans Jamtaba : serveur privé, sans mot de passe, pseudo = ton nom ici. Adresse du serveur :",
+          "code": "ninjam"
+        },
+        {
+          "text": "Branche la sortie ligne de ta machine dans l’entrée de ta carte son, et choisis cette entrée dans Jamtaba. L’USB de la machine ne transporte que le MIDI. Mets un casque."
+        },
+        {
+          "text": "Même tempo partout : règle le BPM de Jamtaba sur celui de ta machine (vote BPM). BPI 16 = 4 mesures. Relance ton pattern sur le 1 du phare."
+        }
+      ]
+    },
+    {
+      "title": "La machine : dans Chrome ou Edge",
+      "steps": [
+        { "text": "Branche la machine en USB, ouvre cette page dans Chrome ou Edge et autorise le MIDI. Safari et Firefox ne font que l’écoute." },
+        { "text": "Tu vois tes parts et leurs réglages. Les autres voient ta machine en direct, et toi la leur." },
+        { "text": "Un seul onglet Jamboree à la fois : un deuxième ne fera rien entendre et embrouille la machine." }
+      ]
+    },
+    {
+      "title": "Les cues : se parler sans parler",
+      "steps": [
+        { "text": "Touches 1 à 5, ou les boutons : le cue s’allume chez tout le monde sur la prochaine mesure. Le phare ⛶ passe en plein écran pour le voir de loin." }
+      ]
+    },
+    {
+      "title": "Écouter depuis un téléphone",
+      "steps": [
+        {
+          "text": "Dans la session, le bouton « Lien d’écoute » copie une page qui joue le mix. Elle marche sur iPhone :",
+          "code": "listen"
+        },
+        { "text": "Le flux tourne en continu : « En direct » s’affiche même quand personne ne joue." }
+      ]
+    }
+  ],
+  "pitfalls": {
+    "title": "À savoir avant de râler",
+    "items": [
+      "NINJAM fait entendre les autres avec un intervalle de retard (4 mesures par défaut). C’est le principe : chacun joue sur ce que les autres viennent de jouer.",
+      "Le cockpit lit le tempo de l’hôte, il ne synchronise pas les machines : même BPM des deux côtés, à la main.",
+      "Le son de ta machine ne passe pas par l’USB : sans câble audio vers la carte son, Jamtaba n’envoie rien."
+    ]
+  },
+  "links": {
+    "title": "Liens",
+    "items": [
+      { "label": "Télécharger Jamtaba", "href": "https://github.com/elieserdejesus/JamTaba/releases" },
+      { "label": "Déroulé complet de la première jam", "href": "https://github.com/0xBenitas/Electribe-viewer/blob/main/docs/PREMIERE-JAM.md" }
+    ]
+  },
+  "copy": "Copier",
+  "copied": "Copié ✓",
+  "close": "Fermer (Esc)",
+  "open": "Mode d’emploi"
+}

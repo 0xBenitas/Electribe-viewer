@@ -41,6 +41,15 @@
 4. **Clock EMX2** : le BPM affiché dans le cockpit suit la machine (`0xF8`,
    `MIDI_FINDINGS.md` §clock, cases encore vides).
 
+## Le mode d'emploi est dans l'app
+
+Depuis le 04/09, l'accueil de <https://jamboreeeeeeee.duckdns.org> affiche une carte
+« Mode d'emploi » (rôles, son via Jamtaba avec l'adresse du serveur à copier,
+machine, cues, écoute, pièges, liens) et le bandeau de session a un bouton
+« ? Mode d'emploi » qui l'ouvre par-dessus le cockpit avec les liens de la
+session (lien musiciens + lien d'écoute) à lire aux potes. Texte dans
+`src/copy/guide.json`, composant `src/components/Guide.tsx`.
+
 ## Ce qu'il te faut (toi = hôte)
 
 - PC sous Windows, **Chrome ou Edge** (Web MIDI ; Safari et Firefox = écoute seule),

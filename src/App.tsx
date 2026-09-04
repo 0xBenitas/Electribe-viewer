@@ -16,6 +16,7 @@ import { MultiTabGuard } from './components/MultiTabGuard.tsx';
 import { CockpitHeader } from './components/CockpitHeader.tsx';
 import { SessionBar } from './components/SessionBar.tsx';
 import { LobbyBrowser } from './components/LobbyBrowser.tsx';
+import { GuideSection } from './components/Guide.tsx';
 import { TransportBar } from './components/TransportBar.tsx';
 import { NowBanner } from './components/NowBanner.tsx';
 import { LighthouseHero } from './components/LighthouseHero.tsx';
@@ -111,7 +112,10 @@ export function App() {
 
         {!listenOnly && <ConnectionStatus />}
         {sessionConfig === null ? (
-          <LobbyBrowser onConnect={setSessionConfig} />
+          <>
+            <LobbyBrowser onConnect={setSessionConfig} />
+            <GuideSection />
+          </>
         ) : (
           <SessionBar
             room={sessionConfig.room}

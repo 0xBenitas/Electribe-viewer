@@ -29,6 +29,7 @@ appli.
 - Web MIDI (détection machines + clock), Web USB (identification).
 - Serveur de session WebSocket (Node, `server/`), serveur audio NINJAM.
 - Self-host : Docker + Caddy (voir `docs/DEPLOY.md`).
+- Mode d'emploi intégré (accueil + bouton « ? » en session) : texte dans `src/copy/guide.json`.
 
 ## Architecture (le joint de fusion)
 

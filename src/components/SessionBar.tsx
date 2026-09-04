@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useSessionStore } from '../store/session.ts';
 import { useSharedTransport } from '../model/useClock.ts';
 import { buildShareLink } from '../lib/sessionPrefs.ts';
+import { GuideOverlay } from './Guide.tsx';
+import guideCopy from '../copy/guide.json';
 
 interface Props {
   /** Room currently joined (drives the title + share link). */
@@ -19,6 +21,7 @@ interface Props {
 export function SessionBar({ room, server, onDisconnect }: Props) {
   const [copied, setCopied] = useState(false);
   const [copiedListen, setCopiedListen] = useState(false);
+  const [guide, setGuide] = useState(false);
 
   const self = useSessionStore((s) => s.self);
   const linkStatus = useSessionStore((s) => s.linkStatus);
@@ -86,12 +89,23 @@ export function SessionBar({ room, server, onDisconnect }: Props) {
         {copiedListen ? 'Lien copié ✓' : '🔊 Lien d’écoute'}
       </a>
       <button
+        onClick={() => setGuide(true)}
+        title="Rôles, son (Jamtaba), machine, cues, écoute — et les liens de cette session"
+        className="btn-acid bg-bg-3 px-3 py-1.5 text-xs text-text-dim"
+        style={{ borderWidth: '2px', boxShadow: '2px 2px 0 #000' }}
+      >
+        ? {guideCopy.open}
+      </button>
+      <button
         onClick={onDisconnect}
         className="btn-acid ml-auto bg-bg-3 px-3 py-1.5 text-xs text-text-dim"
         style={{ borderWidth: '2px', boxShadow: '2px 2px 0 #000' }}
       >
         Quitter
       </button>
+      {guide && (
+        <GuideOverlay room={room} server={server} onClose={() => setGuide(false)} />
+      )}
     </div>
   );
 }

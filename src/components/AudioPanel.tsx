@@ -1,15 +1,11 @@
 import { useState } from 'react';
-import { ninjamTarget } from '../core/transport/ninjam.ts';
+import { NINJAM_TARGET } from '../lib/ninjamHost.ts';
 import { useSessionStore } from '../store/session.ts';
-
-// ninjamTarget appends the default port when none is given.
-const NINJAM_HOST =
-  (import.meta.env.VITE_NINJAM_HOST as string | undefined) ?? 'localhost';
 
 export function AudioPanel() {
   const self = useSessionStore((s) => s.self);
   const [copied, setCopied] = useState(false);
-  const target = ninjamTarget(NINJAM_HOST);
+  const target = NINJAM_TARGET;
 
   const copy = () => {
     void navigator.clipboard?.writeText(target).then(() => {
