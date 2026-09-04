@@ -31,18 +31,30 @@ describe('encode/decode byte-exact sur le dump réel', () => {
 describe('patchPartSound', () => {
   it('applique le son d’un part sur un autre, sans toucher les voisins', () => {
     const orig = parsePatternDump(raw);
-    const donor = partToSound(orig.parts[1]!); // son du part 2
+    // Le fixture (Init) a des parts quasi identiques : on singularise le donneur
+    // pour prouver que CHAQUE champ voyage (valeurs signées comprises).
+    const donor = {
+      ...partToSound(orig.parts[1]!),
+      oscType: 301, oscEdit: 77, filterType: 5, filterCutoff: 99, filterReso: 42,
+      filterEgInt: -33, modType: 12, modSpeed: 64, modDepth: 100, egAttack: 3,
+      egDecay: 88, ampLevel: 120, ampPan: -20, egOn: true, mfxSend: true,
+      grooveType: 7, grooveDepth: 50, ifxOn: true, ifxType: 9, ifxEdit: 66,
+      oscPitch: -12, oscGlide: 30, voiceAssign: 2, partPriority: 1,
+    };
     const patched = patchPartSound(raw, 0, donor); // sur le part 1
 
     expect(patched).not.toBe(raw); // copie
     const after = parsePatternDump(patched);
 
-    // Part 1 a hérité des params SysEx-only « son » du part 2
-    expect(after.parts[0]!.oscType).toBe(orig.parts[1]!.oscType);
-    expect(after.parts[0]!.filterType).toBe(orig.parts[1]!.filterType);
-    expect(after.parts[0]!.ifxType).toBe(orig.parts[1]!.ifxType);
-    expect(after.parts[0]!.voiceAssign).toBe(orig.parts[1]!.voiceAssign);
-    expect(after.parts[0]!.modType).toBe(orig.parts[1]!.modType);
+    // Part 1 a hérité du SON complet du part 2 (tout PartSound sauf les états de jeu)
+    const PLAY_STATE = new Set(['lastStep', 'mute', 'motionSeqMode', 'trgPadVelocity', 'scaleMode']);
+    const soundOf = (p: (typeof orig.parts)[number]) =>
+      Object.fromEntries(Object.entries(partToSound(p)).filter(([k]) => !PLAY_STATE.has(k)));
+    expect(soundOf(after.parts[0]!)).toEqual(soundOf({ ...orig.parts[1]!, ...donor }));
+    // … mais garde sa séquence et ses états de jeu
+    expect(after.parts[0]!.steps).toEqual(orig.parts[0]!.steps);
+    expect(after.parts[0]!.mute).toBe(orig.parts[0]!.mute);
+    expect(after.parts[0]!.lastStep).toBe(orig.parts[0]!.lastStep);
 
     // Les autres parts sont intacts
     expect(after.parts[2]).toEqual(orig.parts[2]);

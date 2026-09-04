@@ -18,11 +18,19 @@ import type { PartSound } from '../../db/types.ts';
 const clampByte = (v: number): number =>
   Math.max(0, Math.min(255, Math.round(v)));
 
+const signed8 = (v: number): number => Math.max(-128, Math.min(127, Math.round(v))) & 0xff;
+const bit = (b: boolean): number => (b ? 1 : 0);
+
 /**
- * Patche les params SysEx-only « son » d'un part (ce que les CC ne peuvent pas
- * régler) dans une COPIE du dump brut décodé (16384 octets). Offsets relatifs au
- * bloc part, alignés sur le parser (`parsePart`). N'écrit PAS les params CC-mappés
- * (appliqués en live) ni les états de séquence/perf (mute, lastStep, groove…).
+ * Patche le SON complet d'un part dans une COPIE du dump brut décodé (16384
+ * octets) : oscillateur, filtre, EG, amp, modulation, IFX, groove, voice —
+ * tout ce qu'un preset capture (`PartSound`). Offsets relatifs au bloc part,
+ * alignés sur le parser (`parsePart`). N'écrit PAS la séquence (steps), ni les
+ * états de jeu (mute, lastStep, motion seq, trigger pad, scale mode).
+ *
+ * Renvoyé via `resendCurrentPattern` (edit buffer, ADR-006), c'est ce qui permet
+ * d'appliquer un son sauvegardé sur N'IMPORTE QUELLE piste, pas seulement le
+ * part actif (les CC ne touchent que celui-ci, ADR-001).
  */
 export function patchPartSound(
   raw: Uint8Array,
@@ -38,10 +46,27 @@ export function patchPartSound(
   out[base + 6] = clampByte(sound.partPriority);
   out[base + 8] = sound.oscType & 0xff; // oscType lo
   out[base + 9] = (sound.oscType >> 8) & 0xff; // oscType hi
+  out[base + 11] = clampByte(sound.oscEdit);
   out[base + 12] = clampByte(sound.filterType);
+  out[base + 13] = clampByte(sound.filterCutoff);
+  out[base + 14] = clampByte(sound.filterReso);
+  out[base + 15] = signed8(sound.filterEgInt);
   out[base + 16] = clampByte(sound.modType);
-  out[base + 26] = sound.egOn ? 1 : 0;
+  out[base + 17] = clampByte(sound.modSpeed);
+  out[base + 18] = clampByte(sound.modDepth);
+  out[base + 20] = clampByte(sound.egAttack);
+  out[base + 21] = clampByte(sound.egDecay);
+  out[base + 24] = clampByte(sound.ampLevel);
+  out[base + 25] = signed8(sound.ampPan);
+  out[base + 26] = bit(sound.egOn);
+  out[base + 27] = bit(sound.mfxSend);
+  out[base + 28] = clampByte(sound.grooveType);
+  out[base + 29] = clampByte(sound.grooveDepth);
+  out[base + 32] = bit(sound.ifxOn);
   out[base + 33] = clampByte(sound.ifxType);
+  out[base + 34] = clampByte(sound.ifxEdit);
+  out[base + 36] = signed8(sound.oscPitch);
+  out[base + 37] = clampByte(sound.oscGlide);
   return out;
 }
 

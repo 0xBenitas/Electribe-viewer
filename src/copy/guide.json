@@ -40,7 +40,10 @@
       "steps": [
         {
           "text": "Installe Jamtaba, le client NINJAM gratuit (Windows, Mac, Linux). Avec REAPER, le plugin ReaNINJAM fait pareil.",
-          "link": { "label": "Télécharger Jamtaba", "href": "https://github.com/elieserdejesus/JamTaba/releases" }
+          "link": {
+            "label": "Télécharger Jamtaba",
+            "href": "https://github.com/elieserdejesus/JamTaba/releases"
+          }
         },
         {
           "text": "Dans Jamtaba : serveur privé, sans mot de passe, pseudo = ton nom ici. Adresse du serveur :",
@@ -55,17 +58,50 @@
       ]
     },
     {
+      "title": "Jamtaba pas à pas (Windows)",
+      "figure": "jamtaba",
+      "steps": [
+        {
+          "text": "En haut à gauche, remplace « user name here » par ton nom (le même que dans Jamboree)."
+        },
+        {
+          "text": "Ignore la liste « Rooms to play » : ce sont les serveurs publics. Menu « Ninjam » → « Connect in private server… »."
+        },
+        {
+          "text": "Dans la fenêtre : Server = l’adresse ci-dessous, Port = 2049, User name = ton nom, Password = vide. Puis « Connect ».",
+          "code": "ninjam"
+        },
+        {
+          "text": "Préférences → Audio : choisis ta carte son (ASIO si tu en as un) et coche l’entrée où la machine est branchée. En bas à gauche, le menu « no input » doit afficher cette entrée."
+        },
+        {
+          "text": "Le bouton vert « Transmit » doit être enfoncé : sans lui, les autres ne t’entendent pas. Le message « Public chat error » n’a aucune importance."
+        },
+        {
+          "text": "Dans la room, règle BPM sur le tempo de ta machine et BPI sur 16 (les votes en haut de la fenêtre)."
+        }
+      ]
+    },
+    {
       "title": "La machine : dans Chrome ou Edge",
       "steps": [
-        { "text": "Branche la machine en USB, ouvre cette page dans Chrome ou Edge et autorise le MIDI. Safari et Firefox ne font que l’écoute." },
-        { "text": "Tu vois tes parts et leurs réglages. Les autres voient ta machine en direct, et toi la leur." },
-        { "text": "Un seul onglet Jamboree à la fois : un deuxième ne fera rien entendre et embrouille la machine." }
+        {
+          "text": "Branche la machine en USB, ouvre cette page dans Chrome ou Edge et autorise le MIDI. Safari et Firefox ne font que l’écoute."
+        },
+        {
+          "text": "Tu vois tes parts et leurs réglages. Les autres voient ta machine en direct, et toi la leur."
+        },
+        {
+          "text": "Un seul onglet Jamboree à la fois : un deuxième ne fera rien entendre et embrouille la machine."
+        }
       ]
     },
     {
       "title": "Les cues : se parler sans parler",
       "steps": [
-        { "text": "Touches 1 à 5, ou les boutons : le cue s’allume chez tout le monde sur la prochaine mesure. Le phare ⛶ passe en plein écran pour le voir de loin." }
+        {
+          "text": "Touches 1 à 5, ou les boutons : le cue s’allume chez tout le monde sur la prochaine mesure. Le phare ⛶ passe en plein écran pour le voir de loin."
+        }
       ]
     },
     {
@@ -75,7 +111,9 @@
           "text": "Dans la session, le bouton « Lien d’écoute » copie une page qui joue le mix. Elle marche sur iPhone :",
           "code": "listen"
         },
-        { "text": "Le flux tourne en continu : « En direct » s’affiche même quand personne ne joue." }
+        {
+          "text": "Le flux tourne en continu : « En direct » s’affiche même quand personne ne joue."
+        }
       ]
     }
   ],
@@ -90,8 +128,14 @@
   "links": {
     "title": "Liens",
     "items": [
-      { "label": "Télécharger Jamtaba", "href": "https://github.com/elieserdejesus/JamTaba/releases" },
-      { "label": "Déroulé complet de la première jam", "href": "https://github.com/0xBenitas/Electribe-viewer/blob/main/docs/PREMIERE-JAM.md" }
+      {
+        "label": "Télécharger Jamtaba",
+        "href": "https://github.com/elieserdejesus/JamTaba/releases"
+      },
+      {
+        "label": "Déroulé complet de la première jam",
+        "href": "https://github.com/0xBenitas/Electribe-viewer/blob/main/docs/PREMIERE-JAM.md"
+      }
     ]
   },
   "copy": "Copier",

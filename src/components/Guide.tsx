@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import copy from '../copy/guide.json';
 import { NINJAM_TARGET } from '../lib/ninjamHost.ts';
 import { buildShareLink } from '../lib/sessionPrefs.ts';
+import { JamtabaFigure } from './JamtabaFigure.tsx';
 
 // Le mode d'emploi : rôles, étapes, pièges, liens. Même contenu sur l'accueil
 // (GuideSection, repliable) et en session (GuideOverlay, avec les liens de la
@@ -109,6 +110,7 @@ export function GuideContent({ room, server }: Ctx) {
           <h3 className="text-xs font-bold uppercase tracking-wider text-text-dim">
             {i + 1}. {s.title}
           </h3>
+          {'figure' in s && s.figure === 'jamtaba' && <JamtabaFigure />}
           <ol className="flex list-decimal flex-col gap-2 pl-5 text-xs">
             {s.steps.map((step) => (
               <li key={step.text}>
