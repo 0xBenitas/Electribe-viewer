@@ -76,6 +76,16 @@ faux micro Chrome) — vérifié le 04/09/2026 : 581 tranches envoyées, 527 re�
 et jouées, signal en sortie. Aussi `scripts/e2e-son-solo.mjs` (auto-écoute décalée)
 et `scripts/e2e-son-nodevice.mjs` (aucune entrée → écoute + avertissement).
 
+## Cache navigateur (2026-09-04)
+
+Sans en-tête `Cache-Control`, un téléphone gardait l'ancienne app des heures
+(cache heuristique sur `Last-Modified`). Le vhost Caddy renvoie désormais
+`no-cache` pour `/`, `*.html` et `/worklets/*` (revalidation ETag à chaque
+visite, quasi gratuit) et `immutable` un an pour `/assets/*` (noms hachés par
+Vite). ⚠️ Le Caddyfile de prod est bind-monté : après édition, **restart** du
+conteneur `omexom-caddy` (un reload ne voit pas le nouvel inode) ; valider avant
+avec `docker cp` + `caddy validate`, ce Caddy sert aussi les autres sites.
+
 ## Port NINJAM de secours (2026-09-04)
 
 2049 est le port NFS : des box et réseaux d'entreprise le filtrent en sortie, et
